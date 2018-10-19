@@ -35,10 +35,34 @@ fn main() {
 
     game.log.borrow_mut().log(&format!("Successfully created bot! My Player ID is {}. Bot rng seed is {}.", game.my_id.0, rng_seed));
 
+    let mut initial_turn = true;
+
     loop {
         game.update_frame();
         let mut command_queue: Vec<Command> = Vec::new();
-        // Do nothing as a baseline measure
+        let me = &game.players[game.my_id.0];
+
+        // Initial turn spawns a ship.
+        if initial_turn {
+            command_queue.push(me.shipyard.spawn());
+            initial_turn = false;
+        }
+
+
+        // move up
+        for ship_id in &me.ship_ids {
+            let ship = &game.ships[ship_id];
+
+            /*let command = if cell.halite < game.constants.max_halite / 10 || ship.is_full() {
+                let random_direction = Direction::get_all_cardinals()[rng.gen_range(0, 4)];
+                ship.move_ship(random_direction)
+            } else {
+                ship.stay_still()
+            };*/
+
+            let command = ship.move_ship(Direction::North);
+            command_queue.push(command);
+        }
 
         Game::end_turn(&command_queue);
     }
