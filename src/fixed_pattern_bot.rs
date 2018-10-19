@@ -23,11 +23,19 @@ pub fn run(mut game: Game) {
         } else if programmed_commands.len() <= 0 {
             let ship = &game.ships[&me.ship_ids[0]];
 
-            programmed_commands.push(ship.move_ship(Direction::North));
-            programmed_commands.push(ship.stay_still());
             programmed_commands.push(ship.move_ship(Direction::East));
             programmed_commands.push(ship.stay_still());
+            programmed_commands.push(ship.move_ship(Direction::North));
+            programmed_commands.push(ship.stay_still());
+            programmed_commands.push(ship.move_ship(Direction::West));
+            programmed_commands.push(ship.stay_still());
+            programmed_commands.push(ship.move_ship(Direction::West));
+            programmed_commands.push(ship.stay_still());
             programmed_commands.push(ship.move_ship(Direction::South));
+            programmed_commands.push(ship.stay_still());
+            programmed_commands.push(ship.move_ship(Direction::East));
+            // Now ship is at spawn.
+            programmed_commands.push(ship.move_ship(Direction::East));
             programmed_commands.push(ship.stay_still());
             programmed_commands.push(ship.move_ship(Direction::South));
             programmed_commands.push(ship.stay_still());
@@ -38,7 +46,6 @@ pub fn run(mut game: Game) {
             programmed_commands.push(ship.move_ship(Direction::North));
             programmed_commands.push(ship.stay_still());
             programmed_commands.push(ship.move_ship(Direction::East));
-            programmed_commands.push(ship.stay_still());
         }
 
         // Do one action per round.
