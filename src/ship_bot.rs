@@ -57,10 +57,10 @@ impl ShipBot {
     }
 
     fn calculate_ai(&mut self, ship: &Ship, game_map: &GameMap) {
-        self.movement_queue.push(ship.move_ship(Direction::North));
-        self.movement_queue.push(ship.stay_still());
-        self.movement_queue.push(ship.stay_still());
-        self.movement_queue.push(ship.move_ship(Direction::South));
+        const MAX_STEPS: i32 = 13;
+        const MIN_STEPS: i32 = 11;
+        // Make sure to only move in one quadrant.
+        // Don't let random movement cancel itself out.
 
         let vertical_direction =
             if rand::thread_rng().gen_bool(0.5) {
@@ -72,32 +72,32 @@ impl ShipBot {
                 Direction::East
             } else { Direction::West };
 
-        let num_steps = rand::thread_rng().gen_range(1,10);
-        // safe the order of the commands to push them into
-        // the movement_queue in opposite order.
-        let mut backwards: Vec<Command> = Vec::new();
+        let num_steps = rand::thread_rng().gen_range(MIN_STEPS,MAX_STEPS);
+        let mut directions: Vec<Direction> = Vec::new();
 
         for _ in 0..num_steps {
             // Either go horizontally or vertically.
             if rand::thread_rng().gen_bool(0.5) {
-                ShipBot::move_and_stand(&mut self.movement_queue, &ship, horizontal_direction);
-                ShipBot::move_and_stand(&mut backwards, &ship, horizontal_direction);
+                directions.push(vertical_direction)
             } else {
-                ShipBot::move_and_stand(&mut self.movement_queue, &ship, vertical_direction);
-                ShipBot::move_and_stand(&mut backwards, &ship, vertical_direction);
+                directions.push(horizontal_direction)
             };
         }
-        // and now backwards to.
-        for command in backwards.into_iter().rev() {
-            self.movement_queue.push(command);
-        }
-    }
+        // and now backwards and collect stuff.
+        for direction in directions.iter() {
+            self.movement_queue.push(ship.move_ship(
+                direction.clone()));
 
-    fn move_and_stand(queue: &mut Vec<Command>, ship: &Ship, direction: Direction) {
-        queue.push(ship.move_ship(direction));
-        queue.push(ship.stay_still());
-        queue.push(ship.stay_still());
-        queue.push(ship.stay_still());
+            self.movement_queue.push(ship.stay_still());
+            self.movement_queue.push(ship.stay_still());
+            //self.movement_queue.push(ship.stay_still());
+        }
+        // First forwards.
+        for direction in directions.iter().rev() {
+            self.movement_queue.push(ship.move_ship(
+                direction.invert_direction()));
+            self.movement_queue.push(ship.stay_still());
+        }
     }
 }
 
