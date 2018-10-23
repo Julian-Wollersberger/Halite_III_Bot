@@ -9,8 +9,13 @@ pub fn run(mut game: Game) {
     loop {
         game.update_frame();
 
-        let command_queue = Vec::new();
-        ship_bot.next_frame(&game.ships);
+        let game_map = &game.game_map;
+        let mut command_queue = Vec::new();
+
+        match ship_bot.next_frame(&game.ships, &game_map) {
+            Ok(command) => command_queue.push(command),
+            Err(_) => print!("Ship seems to be removed!")
+        };
 
         Game::end_turn(&command_queue);
     }
@@ -23,7 +28,7 @@ fn spawn_initial_ship(game: &mut Game) -> ShipBot {
     {
         let me = &game.players[game.my_id.0];
         command_queue.push(me.shipyard.spawn());
-    } // End mutable borrow of game
+    } // End mutable borrow of game to me
 
     Game::end_turn(&command_queue);
     game.update_frame();
