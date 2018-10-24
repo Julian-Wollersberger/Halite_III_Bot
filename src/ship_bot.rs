@@ -6,10 +6,9 @@ use hlt::ship::Ship;
 use hlt::command::Command;
 use hlt::log::Log;
 use hlt::ShipId;
-use std::collections::HashMap;
 use hlt::direction::Direction;
 use rand::Rng;
-use hlt::game_map::GameMap;
+use hlt::game::Game;
 
 /* This is a more intelligent ship.
  * It has a command queue for the next few turns. */
@@ -21,9 +20,9 @@ pub struct ShipBot {
 
 impl ShipBot {
 
-    pub fn generate(ship: &Ship, logger: Rc<RefCell<Log>>) -> ShipBot {
+    pub fn generate(ship_id: &ShipId, logger: Rc<RefCell<Log>>) -> ShipBot {
         ShipBot {
-            ship_id: ship.id,
+            ship_id: ship_id.clone(),
             movement_queue: Vec::new(),
             logger,
         }
@@ -32,18 +31,18 @@ impl ShipBot {
     /* Returns a queued action or
      * processes the AI to come up with actions.
      * Returns an Error if the ship doesn't exist anymore. */
-    pub fn next_frame(&mut self, ships: &HashMap<ShipId, Ship>, game_map: &GameMap) -> Result<Command, ()> {
+    pub fn next_frame(&mut self, game: &Game) -> Result<Command, String> {
         // First, find out if the ship still exists.
         let hlt_ship: &Ship;
-        match ships.get(&self.ship_id) {
+        match game.ships.get(&self.ship_id) {
             Some(ship) => hlt_ship = ship,
             None =>
-                return Result::Err(())
+                return Result::Err(format!("The ship {} doesn't exist anymore!", &self.ship_id.0))
         }
 
         // if queue empty
         if self.movement_queue.len() <= 0 {
-            self.calculate_ai(hlt_ship, game_map);
+            self.calculate_ai(hlt_ship);
         }
 
         // Pop one action per round.
@@ -56,7 +55,7 @@ impl ShipBot {
         });
     }
 
-    fn calculate_ai(&mut self, ship: &Ship, game_map: &GameMap) {
+    fn calculate_ai(&mut self, ship: &Ship) {
         const MAX_STEPS: i32 = 13;
         const MIN_STEPS: i32 = 11;
         // Make sure to only move in one quadrant.

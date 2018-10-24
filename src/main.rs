@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate core;
 
 use hlt::game::Game;
 use std::env;
@@ -7,7 +8,6 @@ use std::time::UNIX_EPOCH;
 
 // include
 mod hlt;
-mod fixed_pattern_bot;
 mod move_random_and_back;
 mod ship_bot;
 

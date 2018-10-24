@@ -57,13 +57,12 @@ fn example_main() {
 
         let shipyard_cell = game_map.at_entity(&me.shipyard);
 
-        if
-            game.turn_number <= 200 &&
+        if game.turn_number <= 200 &&
                 me.halite >= game.constants.ship_cost &&
                 !shipyard_cell.is_occupied()
-            {
-                command_queue.push(me.shipyard.spawn());
-            }
+        {
+            command_queue.push(me.shipyard.spawn());
+        }
 
 
         Game::end_turn(&command_queue);
