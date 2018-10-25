@@ -17,6 +17,7 @@ pub struct ShipBot {
     pub ship_id: ShipId,
     movement_queue: Vec<Direction>,
     logger: Rc<RefCell<Log>>,
+    not_moved: u32,
 }
 
 impl ShipBot {
@@ -26,6 +27,7 @@ impl ShipBot {
             ship_id: ship_id.clone(),
             movement_queue: Vec::new(),
             logger,
+            not_moved: 0,
         }
     }
 
@@ -43,20 +45,21 @@ impl ShipBot {
 
         // if queue empty
         if self.movement_queue.len() <= 0 {
-            self.calculate_ai(hlt_ship);
+            self.calculate_ai();
         }
 
         // Pop one action per round.
         let mut retry: Option<Direction> = None;
         let command = match self.movement_queue.pop() {
             // Try to move ship, but stay still if a collision would occur.
-            //fixme collision may occur when ship suddenly stays still.
+            // fixme Deadlock
             Some(direction) => {
-                if ex_map.try_reserve_cell(&hlt_ship.position.directional_offset(direction)) {
+                if ex_map.can_move_safely_then_reserve(&hlt_ship.position.directional_offset(direction)) {
                     hlt_ship.move_ship(direction)
                 } else {
                     if direction != Direction::Still {
                         retry = Some(direction);
+                        self.not_moved += 1;
                     }
                     hlt_ship.stay_still()
                 }
@@ -72,13 +75,23 @@ impl ShipBot {
             None => {}
         }
 
+        // If not moved for to long, try some other random movement
+        if self.not_moved >= 3 {
+            self.not_moved = 0;
+            self.queue_random_movement(2, 4);
+        }
+
         return Result::Ok(command);
     }
 
 
-    fn calculate_ai(&mut self, ship: &Ship) {
+    fn calculate_ai(&mut self) {
         const MAX_STEPS: i32 = 13;
         const MIN_STEPS: i32 = 11;
+        self.queue_random_movement(MIN_STEPS, MAX_STEPS)
+    }
+
+    fn queue_random_movement(&mut self, min_steps: i32, max_steps: i32) {
         // Make sure to only move in one quadrant.
         // Don't let random movement cancel itself out.
 
@@ -92,7 +105,7 @@ impl ShipBot {
                 Direction::East
             } else { Direction::West };
 
-        let num_steps = rand::thread_rng().gen_range(MIN_STEPS,MAX_STEPS);
+        let num_steps = rand::thread_rng().gen_range(min_steps,max_steps);
         let mut directions: Vec<Direction> = Vec::new();
 
         for _ in 0..num_steps {
