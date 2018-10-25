@@ -9,12 +9,13 @@ use hlt::ShipId;
 use hlt::direction::Direction;
 use rand::Rng;
 use hlt::game::Game;
+use extended_map::ExtendedMap;
 
 /* This is a more intelligent ship.
  * It has a command queue for the next few turns. */
 pub struct ShipBot {
     pub ship_id: ShipId,
-    movement_queue: Vec<Command>,
+    movement_queue: Vec<Direction>,
     logger: Rc<RefCell<Log>>,
 }
 
@@ -31,7 +32,7 @@ impl ShipBot {
     /* Returns a queued action or
      * processes the AI to come up with actions.
      * Returns an Error if the ship doesn't exist anymore. */
-    pub fn next_frame(&mut self, game: &Game) -> Result<Command, String> {
+    pub fn next_frame(&mut self, game: &Game, ex_map: &mut ExtendedMap) -> Result<Command, String> {
         // First, find out if the ship still exists.
         let hlt_ship: &Ship;
         match game.ships.get(&self.ship_id) {
@@ -46,14 +47,34 @@ impl ShipBot {
         }
 
         // Pop one action per round.
-        return Result::Ok( match self.movement_queue.pop() {
-            Some(com) => com,
+        let mut retry: Option<Direction> = None;
+        let command = match self.movement_queue.pop() {
+            // Try to move ship, but stay still if a collision would occur.
+            //fixme collision may occur when ship suddenly stays still.
+            Some(direction) => {
+                if ex_map.try_reserve_cell(&hlt_ship.position.directional_offset(direction)) {
+                    hlt_ship.move_ship(direction)
+                } else {
+                    if direction != Direction::Still {
+                        retry = Some(direction);
+                    }
+                    hlt_ship.stay_still()
+                }
+            },
             None => { // Fail-safe: Stay still.
                 self.logger.borrow_mut().log("ShipBot: The AI didn't add Actions!");
                 hlt_ship.stay_still()
             }
-        });
+        };
+        // If movement failed, try it next turn.
+        match retry {
+            Some(dir) => self.movement_queue.push(dir),
+            None => {}
+        }
+
+        return Result::Ok(command);
     }
+
 
     fn calculate_ai(&mut self, ship: &Ship) {
         const MAX_STEPS: i32 = 13;
@@ -84,18 +105,16 @@ impl ShipBot {
         }
         // and now backwards and collect stuff.
         for direction in directions.iter() {
-            self.movement_queue.push(ship.move_ship(
-                direction.clone()));
+            self.movement_queue.push(direction.clone());
 
-            self.movement_queue.push(ship.stay_still());
-            self.movement_queue.push(ship.stay_still());
+            self.movement_queue.push(Direction::Still);
+            self.movement_queue.push(Direction::Still);
             //self.movement_queue.push(ship.stay_still());
         }
         // First forwards.
         for direction in directions.iter().rev() {
-            self.movement_queue.push(ship.move_ship(
-                direction.invert_direction()));
-            self.movement_queue.push(ship.stay_still());
+            self.movement_queue.push(direction.invert_direction());
+            self.movement_queue.push(Direction::Still);
         }
     }
 }

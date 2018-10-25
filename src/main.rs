@@ -10,6 +10,7 @@ use std::time::UNIX_EPOCH;
 mod hlt;
 mod move_random_and_back;
 mod ship_bot;
+mod extended_map;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
