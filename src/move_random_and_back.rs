@@ -44,10 +44,10 @@ fn process_ship_bots(game: &Game, command_queue: &mut Vec<Command>, bot_list: &m
     for ship_id in &me.ship_ids {
         // If no bot was created for this ship, add a new one.
         let ship_bot = bot_list.entry(ship_id.clone())
-            .or_insert(ShipBot::generate(ship_id, game.log.clone()));
+            .or_insert(ShipBot::new(ship_id, game.log.clone()));
 
         // Process the ship bots
-        match ship_bot.next_frame(&game, &mut extended_map) {
+        match ship_bot.next_turn(&game, &mut extended_map) {
             Ok(command) => command_queue.push(command),
             Err(message) => print!("{}", message)
         };

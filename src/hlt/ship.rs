@@ -19,6 +19,10 @@ impl Ship {
         self.halite >= self.max_halite
     }
 
+    pub fn max_halite(&self) -> usize {
+        self.max_halite
+    }
+
     pub fn make_dropoff(&self) -> Command {
         Command::transform_ship_into_dropoff_site(self.id)
     }

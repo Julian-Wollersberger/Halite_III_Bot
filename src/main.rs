@@ -11,6 +11,7 @@ mod hlt;
 mod move_random_and_back;
 mod ship_bot;
 mod extended_map;
+mod complex_action;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -31,3 +32,11 @@ fn main() {
     //fixed_pattern_bot::run(game);
     move_random_and_back::run(game);
 }
+
+/*
+Move (n, s, e w) | Cost: 10% of halite available at
+turn origin cell is deducted from ship’s current halite.
+
+Move (o) | Collect: 25% of halite available in cell,
+rounded up to the nearest whole number.
+*/

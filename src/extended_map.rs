@@ -5,7 +5,7 @@ use hlt::game_map::GameMap;
 /// A game map with extended information and functionality.
 /// Collision Avoidance.
 pub struct ExtendedMap<'game> {
-    game_map: &'game GameMap,
+    pub game_map: &'game GameMap,
     /// Positions where ships will be in the next turn.
     collision_positions: HashSet<Position>,
 }
