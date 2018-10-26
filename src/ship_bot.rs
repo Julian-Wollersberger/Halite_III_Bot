@@ -13,6 +13,8 @@ use extended_map::ExtendedMap;
 use complex_action::ComplexAction;
 use hlt::position::Position;
 use hlt::map_cell::Structure;
+use core::mem;
+use std::any::Any;
 
 /* This is a more intelligent ship.
  * It plans a few turns. */
@@ -21,9 +23,10 @@ pub struct ShipBot {
     logger: Rc<RefCell<Log>>,
     //not_moved: u32,
 
-    //complex_com_queue: Vec<ComplexCommand>,
-    //current_action: ComplexAction,
-    next_action: ComplexAction,
+    // Action for next turn. It may be set anywhere in
+    // the logic chain.
+    // If not set, the current action will continue.
+    next_action: Option<ComplexAction>,
 }
 
 /* To prevent recursive endless loops,
@@ -36,7 +39,7 @@ impl ShipBot {
             ship_id: ship_id.clone(),
             logger,
             //current_action: ComplexAction::still(),
-            next_action: ComplexAction::Undefined,
+            next_action: Some(ComplexAction::Undefined),
         }
     }
 
@@ -46,7 +49,17 @@ impl ShipBot {
         &mut self, game: &Game, ex_map: &mut ExtendedMap
     ) -> Result<Command, String> {
 
-        let current_action = self.next_action;
+        // The next_action from previous turn
+        // becomes the new current_action.
+        let action_option = mem::replace(
+            &mut self.next_action, None);
+        let current_action = match action_option {
+            Some(action) => action,
+            None => {
+                self.logger.borrow_mut().log("No action defined in previous turn!");
+                ComplexAction::Undefined
+            },
+        };
 
         // First, find out if the ship still exists.
         let hlt_ship: &Ship;
@@ -69,61 +82,66 @@ impl ShipBot {
                 self.decide_action(hlt_ship, ex_map, game)
             }
         };
+        self.logger.borrow_mut().log(&format!(
+            "Current Action: {:?}, next: {:?}, direction: {:?}",
+            current_action, self.next_action, direction)[..]);
 
+        // If no-one did set next_action, the current_action
+        // should continue next turn.
+        if self.next_action.is_none() {
+            self.next_action = Some(current_action);
+        }
 
-        // Pop one action per round.
-        // Try to move ship, but stay still if a collision would occur.
-        /*    Some(direction) => {
-                if ex_map.can_move_safely_then_reserve(&hlt_ship.position.directional_offset(direction)) {
-                    hlt_ship.move_ship(direction)
-                } else {
-                    if direction != Direction::Still {
-                        retry = Some(direction);
-                        self.not_moved += 1;
-                    }
-                    hlt_ship.stay_still()
-                }
-            },
-            None => { // Fail-safe: Stay still.
-                self.logger.borrow_mut().log("ShipBot: The AI didn't add Actions!");
-                hlt_ship.stay_still() */
-        // If not moved for to long, try some other random movement
-
+        let command = hlt_ship.move_ship(direction);
         return Result::Ok(command);
     }
 
     fn decide_action(
         &mut self, ship: &Ship, ex_map: &mut ExtendedMap, game: &Game
     ) -> Direction {
-        const FULL_RATIO: f64 = 0.9;
-
         // If ship is at dropoff, navigate somewhere else
         if ex_map.game_map.at_position(&ship.position).structure != Structure::None {
             return self.navigate_to_random_position(ship, ex_map, game)
 
         // If full, go home.
-        } else if ship.halite as f64 >= FULL_RATIO * ship.max_halite() as f64 {
+        } else if ShipBot::is_full(ship) {
+            //TODO Unify with Default.
             let dropoff_pos = self.find_dropoff(ship, game);
-            self.next_action = ComplexAction::Navigate(dropoff_pos);
+            self.next_action = Some(ComplexAction::Navigate(dropoff_pos));
             self.move_in_direction(&dropoff_pos, ship, ex_map, game)
 
         // Default: navigate_collect to home.
         } else {
             let dropoff_pos = self.find_dropoff(ship, game);
-            self.next_action = ComplexAction::NavigateCollect(dropoff_pos);
+            self.next_action = Some(ComplexAction::NavigateCollect(dropoff_pos));
             self.collect_or_move(&dropoff_pos, ship, ex_map, game)
 
         }
     }
 
+    /// Move if ship is full or cell is empty,
+    /// else collect.
     fn collect_or_move(
         &mut self, destination: &Position,
         ship: &Ship, ex_map: &mut ExtendedMap, game: &Game,
     )-> Direction {
-        // TODO fn Deside movement
 
+        let cell_almost_empty = ex_map.game_map.at_entity(ship)
+            .halite < game.constants.max_halite / 10;
 
-        Direction::Still
+        if cell_almost_empty || ShipBot::is_full(ship) {
+            return self.move_in_direction(destination, ship, ex_map, game);
+        } else {
+            return Direction::Still;
+        };
+    }
+
+    /// A ship is considered full if it has more than
+    /// FULL_RATIO halite stored.
+    fn is_full(ship: &Ship) -> bool {
+        const FULL_RATIO: f64 = 0.9;
+
+        return ship.halite as f64 >= FULL_RATIO * ship.max_halite() as f64;
     }
 
     fn navigate_to_random_position(
@@ -132,35 +150,47 @@ impl ShipBot {
         const MAX_STEPS: i32 = 13;
         const MIN_STEPS: i32 = 11;
 
-        let random = ShipBot::random_position_near(ship, MIN_STEPS, MAX_STEPS);
-        self.next_action = ComplexAction::Navigate(random);
+        let random = ShipBot::random_position_near(&ship.position, MIN_STEPS, MAX_STEPS);
+        self.next_action = Some(ComplexAction::Navigate(random));
         self.move_in_direction(&random, ship, ex_map, game)
     }
 
     /// Position near the ship that is Distance movements away.
     /// Should give a distribution like two dice.
-    fn random_position_near(ship: &Ship, min_distance: i32, max_distance: i32) -> Position {
+    fn random_position_near(pos: &Position, min_distance: i32, max_distance: i32) -> Position {
         Position {
-            x: rand::thread_rng().gen_range(min_distance/2,max_distance/2),
-            y: rand::thread_rng().gen_range(min_distance/2,max_distance/2),
+            x: pos.x + ShipBot::pos_neg_range(min_distance/2, max_distance/2),
+            y: pos.y + ShipBot::pos_neg_range(min_distance/2,max_distance/2),
         }
     }
 
-    /// Is the shipyard a dropoff?
+    /// generates a number in the specified range,
+    /// but it may also be negative.
+    fn pos_neg_range(min: i32, max: i32) -> i32 {
+        let mut rng = rand::thread_rng();
+        return rng.gen_range(min,max)
+            * if rng.gen_bool(0.5) { 1 } else { -1 } // +1 or -1
+    }
+
+    /// currently only shipyard.
     fn find_dropoff(
         &mut self, ship: &Ship, game: &Game
     ) -> Position {
 
-        // get dropoff and use it as destination.
+        let me = &game.players[game.my_id.0];
+        game.game_map.at_entity(&me.shipyard).position
+
+        /*// get dropoff and use it as destination.
         if let Some(dropoff) = game.dropoffs.values().next() {
             return dropoff.position.clone();
 
         } else {
             self.logger.borrow_mut().log("No Dropoff :'(");
             return ship.position.clone();
-        }
+        }*/
     }
 
+    //fixme non't move if no fuel
     fn move_in_direction(
         &mut self, destination: &Position,
         ship: &Ship, ex_map: &mut ExtendedMap, game: &Game
@@ -170,12 +200,14 @@ impl ShipBot {
         if destination.x == ship.position.x
             && destination.y == ship.position.y
         {
-            self.next_action = ComplexAction::Undefined;
+            self.next_action = Some(ComplexAction::Undefined);
             return Direction::Still
         }
 
-        //TODO Don't naive_navigate, but chose random direction.
-        let move_dir =ex_map.game_map.naive_navigate(&ship, destination);
+        //Chose random direction that brings the ship closer.
+        let possible_dir = ex_map.game_map.get_unsafe_moves(&ship.position, destination);
+        let move_dir = possible_dir[rand::thread_rng().gen_range(0, possible_dir.len())];
+
         if ex_map.can_move_safely_then_reserve(
             &ship.position.directional_offset(move_dir))
         {

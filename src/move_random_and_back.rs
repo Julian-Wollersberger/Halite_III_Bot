@@ -23,7 +23,7 @@ pub fn run(mut game: Game) {
 
 fn maybe_spawn_ship(game: &Game, command_queue: &mut Vec<Command>) {
     const SPAWN_UNTIL_TURN: usize = 100;
-    const MAX_SHIP_COUNT: usize = 4;
+    const MAX_SHIP_COUNT: usize = 1;
 
     let me = &game.players[game.my_id.0];
     let shipyard_cell = game.game_map.at_entity(&me.shipyard);
