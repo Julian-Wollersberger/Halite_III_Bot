@@ -9,8 +9,8 @@ use hlt::ShipId;
 use hlt::direction::Direction;
 use rand::Rng;
 use hlt::game::Game;
-use extended_map::ExtendedMap;
-use complex_action::ComplexAction;
+use random_and_back::extended_map::ExtendedMap;
+use random_and_back::complex_action::ComplexAction;
 use hlt::position::Position;
 use hlt::map_cell::Structure;
 use core::mem;
@@ -191,7 +191,7 @@ impl ShipBot {
         }
 
         // non't move if no fuel
-        if ex_map.game_map.at_entity(ship)
+        if game.game_map.at_entity(ship)
             .halite /10 > ship.halite
         {
             return Direction::Still;

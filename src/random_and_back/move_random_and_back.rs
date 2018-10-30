@@ -1,10 +1,10 @@
 use hlt::game::Game;
 use hlt::command::Command;
-
-use ship_bot::ShipBot;
-use std::collections::HashMap;
 use hlt::ShipId;
-use extended_map::ExtendedMap;
+use std::collections::HashMap;
+
+use random_and_back::ship_bot::ShipBot;
+use random_and_back::extended_map::ExtendedMap;
 
 pub fn run(mut game: Game) {
     // There may be stale/destroyed ships in this map.
