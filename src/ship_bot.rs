@@ -182,7 +182,7 @@ impl ShipBot {
         ship: &Ship, ex_map: &mut ExtendedMap, game: &Game
     ) -> Direction {
 
-        // if arrived, move back and collect
+        // if arrived, decide what to do next.
         if destination.x == ship.position.x
             && destination.y == ship.position.y
         {
@@ -197,14 +197,32 @@ impl ShipBot {
             return Direction::Still;
         }
 
-        //Chose random direction that brings the ship closer.
+        //Chose direction that brings the ship closer.
         let possible_dir = ex_map.game_map
             .get_unsafe_moves(&ship.position, destination);
-        let move_dir = if possible_dir.len() == 0 {
+        /*let move_dir = if possible_dir.len() == 0 {
                 Direction::Still
             } else {
                 possible_dir[rand::thread_rng().gen_range(0, possible_dir.len())]
-            };
+            };*/
+        let move_dir= match possible_dir.len() {
+            0 => Direction::Still,
+            1 => possible_dir[0],
+            2 => {
+                // choose the direction with more halite.
+                if ex_map.game_map.at_position(&ship.position
+                        .directional_offset(possible_dir[0])).halite
+                    >= ex_map.game_map.at_position(&ship.position
+                        .directional_offset(possible_dir[1])).halite
+                {
+                    possible_dir[0]
+                } else { possible_dir[1] }
+            },
+            _ => {
+                self.logger.borrow_mut().log("More that 2 directions!");
+                possible_dir[0]
+            }
+        };
 
         if ex_map.can_move_safely_then_reserve(
             &ship.position.directional_offset(move_dir))
