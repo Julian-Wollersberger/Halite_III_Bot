@@ -14,6 +14,29 @@ pub struct GameMap {
 }
 
 impl GameMap {
+
+    /// Added by me.
+    /// I'm just interested in the amount of halite.
+    // TODO test if u16 or u32 is faster.
+    pub fn get_halite_map(&self) -> Vec<Vec<u16>> {
+        assert_eq!(self.height, self.cells.len());
+        assert_eq!(self.width, self.cells[0].len());
+        // Asert max_halite < u16.MAX_VALUE
+
+        let mut halite_map: Vec<Vec<u16>> = Vec::with_capacity(self.height);
+        for cell_row in &self.cells {
+
+            let mut halite_row: Vec<u16> = Vec::with_capacity(self.width);
+            for cell in cell_row {
+                let halite = cell.halite as u16;
+                halite_row.push(halite);
+            }
+
+            halite_map.push(halite_row);
+        }
+        return halite_map;
+    }
+
     pub fn at_position(&self, position: &Position) -> &MapCell {
         let normalized = self.normalize(position);
         &self.cells[normalized.y as usize][normalized.x as usize]

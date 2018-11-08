@@ -5,10 +5,13 @@ use hlt::game::Game;
 use std::env;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
+use overseer::overseer::run;
 
 // include
 mod hlt;
 mod random_and_back;
+mod overseer;
+mod simulator;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -27,7 +30,8 @@ fn main() {
     game.log.borrow_mut().log(&format!("Successfully created bot! My Player ID is {}. Bot rng seed is {}.", game.my_id.0, rng_seed));
 
     //fixed_pattern_bot::run(game);
-    random_and_back::move_random_and_back::run(game);
+    //random_and_back::move_random_and_back::run(game);
+    run(game);
 }
 
 /*
