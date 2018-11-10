@@ -1,13 +1,13 @@
-extern crate rand;
 extern crate core;
+extern crate rand;
 
-use hlt::game::Game;
 use std::env;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
+
+use hlt::game::Game;
 use overseer::overseer::run;
 
-// include
 mod hlt;
 mod random_and_back;
 mod overseer;

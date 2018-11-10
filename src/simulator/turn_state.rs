@@ -1,83 +1,115 @@
-use hlt::position::Position;
-use hlt::game::Game;
 use std::collections::HashMap;
-use hlt::ShipId;
-use hlt::ship::Ship;
 use std::prelude::v1::Vec;
-use core::borrow::BorrowMut;
 
+use hlt::game::Game;
+use hlt::position::Position;
+use hlt::ship::Ship;
+use hlt::ShipId;
+use simulator::action::Action;
+
+//TODO Description
 /// The state of the game at a certain turn.
-/// Prediction of a future turn.
 /// Based on this data, a Bot decides what to do.
-/// It's a linked list.
 pub struct TurnState {
-    // Lazily initialised Linked List
-    next: Option<Box<TurnState>>,
     turn_number: u32,
 
-    // Amount of halite in each cell
+    // Amount of halite in each cell.
+    // access with [y][x]
     halite_map: Vec<Vec<u16>>,
     /// The shipyard is also a dropoff
     dropoffs_pos: Vec<Position>,
     ships: HashMap<ShipId, Ship>,
     //other_ships: Probability map
 
-    // These take priority over the above values.
+    /// # Overwrites:
+    /// The following values take priority over the above.
+    /// They are the undoable state changes.
 
-    // Only the halite in a few cells is collected.
-    // Copying the entire map would be expensive.
-    undo_map: Vec<(Position, u16)>,
-    undo_ships: HashMap<ShipId, Ship>,
+    /// Only the halite in a few cells is collected.
+    /// Copying the entire halite_map would be expensive.
+    overwrite_cells: Vec<(Position, u16)>,
+    overwrite_ships: HashMap<ShipId, Ship>,
 }
 
 impl TurnState {
 
-    /// Create the Linked List.
+    /// # Game Logic
+    /// A bot did action on the previous turn which
+    /// has an effect on this turn.
+    pub fn did_action(&mut self, action: Action) {
+        match action {
+            Action::MoveShip(id, direction) => {
+                //TODO calculate halite.
+                let mut ship = self.ship(&id).clone();
+                ship.position = ship.position.directional_offset(direction);
+                ship.halite += 100; //Placeholder
+
+                self.overwrite_cells.push((ship.position, 0));
+                self.overwrite_ships.insert(id, ship);
+            }
+            Action::None => {}
+        }
+    }
+
+    /// Get a ship either from overwrite_ships or ships.
+    /// Panics if the ship doesn't exist.
+    fn ship(&self, id: &ShipId) -> &Ship {
+        match self.overwrite_ships.get(id) {
+            Some(ship) => ship,
+            None => self.ships.get(id).unwrap()
+        }
+    }
+
+
+
+    /// # State and Rollback management
+
+    /// Based on the actual game.
     pub fn new_current(hlt_game: &Game) -> TurnState {
         TurnState {
-            next: None,
             turn_number: hlt_game.turn_number as u32,
             halite_map: hlt_game.game_map.get_halite_map(),
             dropoffs_pos: my_shipyard_and_dropoff_positions(hlt_game),
             ships: hlt_game.ships.clone(),
-            undo_map: Vec::new(),
-            undo_ships: HashMap::new(),
+            overwrite_cells: Vec::new(),
+            overwrite_ships: HashMap::new(),
         }
     }
 
-    pub fn next(&self) -> Option<&TurnState> {
-        match &self.next {
-            Some(t) => Some(&t),
-            None => None,
-        }
-    }
-
-    /// Get or create next TurnState
-    pub fn next_or_create<'a>(&'a mut self) -> &'a mut TurnState {
-        if self.next.is_some() {
-            &mut self.next.unwrap()
-        } else {
-            self.next = Some(TurnState::create_next(self));
-            &mut self.next.unwrap()
-        }
-    }
-
-    fn create_next(previous: &TurnState) -> Box<TurnState> {
-        /* https://stackoverflow.com/questions/35201250/what-is-the-difference-between-using-the-box-keyword-and-boxnew#35201819
-        box is magic and made up ground-up pixies and the
-        dreams of little children. It is dressed in the finest,
-        swankiest clothes and carries with it the faint aroma
-        of freshly cut pine. */
-        Box::new(TurnState {
-            next: None,
+    pub fn new_next(previous: &TurnState) -> TurnState {
+        TurnState {
             turn_number: previous.turn_number + 1,
             halite_map: previous.halite_map.clone(),
             dropoffs_pos: previous.dropoffs_pos.clone(),
             ships: previous.ships.clone(),
-            // TODO or clone previous?
-            undo_map: Vec::new(),
-            undo_ships: HashMap::new()
-        })
+            overwrite_cells: Vec::new(),
+            overwrite_ships: HashMap::new()
+        }
+    }
+
+    /// Let this turn know of previous' overwrites.
+    pub fn clone_overwrites_from(&mut self, previous: &TurnState) {
+        self.overwrite_cells = previous.overwrite_cells.clone();
+        self.overwrite_ships = previous.overwrite_ships.clone();
+    }
+
+    /// Clear overwrites.
+    pub fn rollback(&mut self) {
+        self.overwrite_cells.clear();
+        self.overwrite_ships.clear();
+    }
+    /// Apply decided actions (overwrites), so other bots know
+    /// of them. Mutates the halite_map and ships.
+    pub fn apply(&mut self) {
+        for (pos, halite) in &self.overwrite_cells {
+            // Write at the location of the cell pointer.
+            * at_normalized(&mut self.halite_map, pos) = *halite;
+        }
+        for (id,ship) in self.overwrite_ships.drain() {
+            self.ships.insert(id, ship);
+        }
+        self.overwrite_cells.clear();
+        self.overwrite_ships.clear();
     }
 }
 
@@ -93,4 +125,13 @@ fn my_shipyard_and_dropoff_positions(hlt_game: &Game) -> Vec<Position> {
     }
     shipyard_dropoffs.push(me.shipyard.position);
     return shipyard_dropoffs
+}
+
+/// Return a pointer a cell.
+/// Wrap around the edge of the map. Copied from game_map.rs
+fn at_normalized<'m>(map: &'m mut Vec<Vec<u16>>, pos: &Position) -> &'m mut u16 {
+    assert_ne!(map.len(), 0);
+    let height = map.len() as i32;
+    let width = map[0].len() as i32;
+    &mut map[(((pos.y % height) + height) % height) as usize][(((pos.x % width) + width) % width) as usize]
 }
