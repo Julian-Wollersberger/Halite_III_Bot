@@ -1,5 +1,4 @@
 use hlt::game::Game;
-use hlt::command::Command;
 use simulator::memory::Memory;
 use simulator::simulator::Simulator;
 
