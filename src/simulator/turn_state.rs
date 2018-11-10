@@ -112,7 +112,7 @@ impl TurnState {
         self.overwrite_ships.clear();
     }
 }
-
+/// Get a list of positions where ships can deposit their cargo.
 fn my_shipyard_and_dropoff_positions(hlt_game: &Game) -> Vec<Position> {
     let me = &hlt_game.players[hlt_game.my_id.0];
     let dropoff_ids = &me.dropoff_ids;

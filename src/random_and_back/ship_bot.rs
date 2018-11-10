@@ -256,6 +256,7 @@ impl ShipBot {
 
     /// generates a number in the specified range,
     /// but it may also be negative.
+    /// => range(-min, -max) or range(min, max)
     fn pos_neg_range(min: i32, max: i32) -> i32 {
         let mut rng = rand::thread_rng();
         return rng.gen_range(min,max)

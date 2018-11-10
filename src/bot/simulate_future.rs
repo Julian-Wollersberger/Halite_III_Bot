@@ -26,9 +26,3 @@ fn first_turn(game: &mut Game) {
     commands.push(game.players[game.my_id.0].shipyard.spawn());
     Game::end_turn(&commands);
 }
-
-
-
-
-
-

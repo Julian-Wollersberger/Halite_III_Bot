@@ -44,7 +44,8 @@ impl<'turn > Simulator<'turn > {
             self.next().clone_overwrites_from(&*current)
         }
 
-        //TODO Second, apply the action to the next turn.
+        //Second, apply the action to the next turn.
+        self.next().did_action(action);
 
         // Third, switch to next turn.
         self.next(); //Side effect: initialize next.
@@ -60,11 +61,11 @@ impl<'turn > Simulator<'turn > {
     /// If a bot has decided on its actions, it must apply them.
     /// Then bots processed later know of the actions and their effects on the map.
     pub fn apply(&mut self) {
+        //TODO Write to memory
         for turn in self.future_turns.iter_mut() {
             turn.apply();
         }
     }
-
 
     /// Get current turn
     pub fn current(&self) -> &TurnState{
@@ -79,11 +80,4 @@ impl<'turn > Simulator<'turn > {
         }
         &mut self.future_turns[self.current_turn_index +1]
     }
-
-
-    /*/// The ship should be a clone.
-    pub fn collect_fast(&mut self, mut ship: Ship) {
-    }
-    pub fn calc_path_revenue(&self, path: Vec<Direction>) {
-    } */
 }
