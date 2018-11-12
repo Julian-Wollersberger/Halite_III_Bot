@@ -53,10 +53,12 @@ impl<'turn > Simulator<'turn > {
     }
 
     /// clear the changes made by actions since the last apply()
-    pub fn rollback(&'turn mut self) {
+    /// TODO partial rollback: only one/a few turns
+    pub fn rollback(&mut self) {
         for turn in self.future_turns.iter_mut() {
             turn.rollback();
         }
+        self.current_turn_index = 0;
     }
     /// If a bot has decided on its actions, it must apply them.
     /// Then bots processed later know of the actions and their effects on the map.
@@ -65,6 +67,7 @@ impl<'turn > Simulator<'turn > {
         for turn in self.future_turns.iter_mut() {
             turn.apply();
         }
+        self.current_turn_index = 0;
     }
 
     /// Get current turn

@@ -5,7 +5,7 @@ use simulator::simulator::Simulator;
 pub fn run(mut hlt_game: Game) {
     first_turn(&mut hlt_game);
 
-    let mut memory = Memory {};
+    let mut memory = Memory::new();
 
     loop {
         hlt_game.update_frame();
