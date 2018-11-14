@@ -2,12 +2,16 @@ use hlt::game::Game;
 use simulator::action::Action;
 use simulator::memory::Memory;
 use simulator::turn_state::TurnState;
+use hlt::ShipId;
+use hlt::ship::Ship;
+use hlt::player::Player;
+use hlt::position::Position;
 
 /// Be able to calculate the outcome of actions a few turns ahead.
 /// I'm trying to not copy the gamefield data more than once per turn.
 pub struct Simulator<'turn > {
     hlt_game: &'turn Game,
-    memory: &'turn Memory,
+    pub memory: &'turn Memory,
 
     /// TODO Or use LinkedList? (because Vec::push might
     /// have to reallocate a lot of memory)
@@ -71,16 +75,23 @@ impl<'turn > Simulator<'turn > {
     }
 
     /// Get current turn
-    pub fn current(&self) -> &TurnState{
+    fn current(&self) -> &TurnState{
         &self.future_turns[self.current_turn_index]
     }
     /// Get or init next turn
-    pub fn next(&mut self) -> &mut TurnState {
+    fn next(&mut self) -> &mut TurnState {
         // init next if non-existent
         if self.future_turns.get(self.current_turn_index +1).is_none() {
             let next = TurnState::new_next(self.current());
             self.future_turns.push(next)
         }
         &mut self.future_turns[self.current_turn_index +1]
+    }
+
+    pub fn id_to_ship(&self, id: ShipId) -> &Ship {
+        self.hlt_game.ships.get(&id).unwrap()
+    }
+    pub fn halite_at(&self, pos: &Position) -> u16 {
+        self.current().halite_at(pos)
     }
 }

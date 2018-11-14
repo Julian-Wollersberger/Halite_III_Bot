@@ -60,7 +60,9 @@ impl TurnState {
         }
     }
 
-
+    pub fn halite_at(&self, pos: &Position) -> u16 {
+        at_normalized(&self.halite_map, pos)
+    }
 
     /// # State and Rollback management
 
@@ -103,7 +105,7 @@ impl TurnState {
     pub fn apply(&mut self) {
         for (pos, halite) in &self.overwrite_cells {
             // Write at the location of the cell pointer.
-            * at_normalized(&mut self.halite_map, pos) = *halite;
+            * at_normalized_mut(&mut self.halite_map, pos) = *halite;
         }
         for (id,ship) in self.overwrite_ships.drain() {
             self.ships.insert(id, ship);
@@ -129,9 +131,16 @@ fn my_shipyard_and_dropoff_positions(hlt_game: &Game) -> Vec<Position> {
 
 /// Return a pointer a cell.
 /// Wrap around the edge of the map. Copied from game_map.rs
-fn at_normalized<'m>(map: &'m mut Vec<Vec<u16>>, pos: &Position) -> &'m mut u16 {
+fn at_normalized_mut<'m>(map: &'m mut Vec<Vec<u16>>, pos: &Position) -> &'m mut u16 {
     assert_ne!(map.len(), 0);
     let height = map.len() as i32;
     let width = map[0].len() as i32;
     &mut map[(((pos.y % height) + height) % height) as usize][(((pos.x % width) + width) % width) as usize]
+}
+/// Wrap around the edge of the map. Copied from game_map.rs
+fn at_normalized(map: &Vec<Vec<u16>>, pos: &Position) -> u16 {
+    assert_ne!(map.len(), 0);
+    let height = map.len() as i32;
+    let width = map[0].len() as i32;
+    map[(((pos.y % height) + height) % height) as usize][(((pos.x % width) + width) % width) as usize]
 }

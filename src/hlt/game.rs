@@ -28,6 +28,21 @@ pub struct Game {
 }
 
 impl Game {
+    /// Convenience getters added by me
+    pub fn id_to_ship(&self, id: ShipId) -> &Ship {
+        self.ships.get(&id).unwrap()
+    }
+    pub fn me(&self) -> &Player {
+        &self.players[self.my_id.0]
+    }
+    /*pub fn my_ships(&self) -> HashMap<ShipId, &Ship> {
+        let map = HashMap::with_capacity(self.me().ship_ids.len());
+        for id in &self.me().ship_ids {
+            let ship = self.ships.
+            map.insert()
+        }
+    }*/
+
     pub fn new() -> Game {
         let log = Rc::new(RefCell::new(Log::new()));
         let mut input = Input::new(&log);
