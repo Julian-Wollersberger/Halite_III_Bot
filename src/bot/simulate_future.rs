@@ -12,13 +12,14 @@ pub fn run(mut hlt_game: Game) {
         hlt_game.update_frame();
         let mut commands = Vec::new();
 
-        let simulator = Simulator::new(&hlt_game, &mut memory);
+        let mut simulator = Simulator::new(&hlt_game, &mut memory);
         let my_ships = &hlt_game.me().ship_ids;
 
-        for ship_id in my_ships {
-            let mut bot = SimulatingBot::new(ship_id.clone(), &simulator, hlt_game.log.clone());
+        let ship_id = my_ships[0];
+        //for ship_id in my_ships {
+            let mut bot: SimulatingBot = SimulatingBot::new(ship_id.clone(), &mut simulator, hlt_game.log.clone());
             commands.push(bot.calculate());
-        }
+        //}
 
         Game::end_turn(&commands);
     }

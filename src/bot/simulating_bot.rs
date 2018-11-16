@@ -14,12 +14,12 @@ use hlt::ship::Ship;
 use simulator::action::Action;
 
 pub struct SimulatingBot<'turn > {
-    simulator: &'turn Simulator<'turn>,
+    simulator: &'turn mut Simulator<'turn>,
     memory: &'turn Memory,
     logger: Rc<RefCell<Log>>,
 
     id: ShipId,
-    ship: &'turn Ship,
+    //ship: &'turn Ship,
 }
 
 /// This bot decides the action of one bot. Future actions
@@ -29,7 +29,7 @@ impl<'turn> SimulatingBot<'turn> {
 
     pub fn new<'t>(
         id: ShipId,
-        simulator: &'t Simulator,
+        simulator: &'t mut Simulator<'t>,
         logger: Rc<RefCell<Log>>,
     ) -> SimulatingBot<'t> {
         SimulatingBot {
@@ -37,7 +37,7 @@ impl<'turn> SimulatingBot<'turn> {
             memory: simulator.memory,
             logger,
             id,
-            ship: simulator.id_to_ship(id),
+            //ship: simulator.id_to_ship(id),
         }
     }
 
@@ -60,7 +60,8 @@ impl<'turn> SimulatingBot<'turn> {
         dir = path.pop().unwrap();
         self.memory.store_moves(self.id, path);
 
-        self.ship.move_ship(dir)
+        //self.ship.move_ship(dir)
+        self.simulator.id_to_ship(self.id).move_ship(dir)
     }
 
     /// Puts Direction::Still in between of movements.
@@ -75,27 +76,31 @@ impl<'turn> SimulatingBot<'turn> {
         while path.len() > 0
             && output.len() < 100 // Fail-safe
         {
+            let action = {
+                let ship = self.simulator.id_to_ship(self.id);
+                let sim = &self.simulator;
+                self.logger.borrow_mut().log(&format!(
+                    "ship: {}, map: {}, pos: {} {}", ship.halite,
+                    sim.halite_at(&ship.position),
+                    ship.position.x, ship.position.y));
 
-            let ship = self.simulator.id_to_ship(self.id);
-            let sim = self.simulator;
-            let mut action: Action;
-
-            // if not enough fuel, stay still
-            let dir = if ship.halite < (sim.halite_at(&ship.position) /10) as usize {
-                Direction::Still
-            }
-            // cell almost empty or ship full, move
-            else if sim.halite_at(&ship.position) < CELL_EMPTY
-                || ship.is_full()
-            {
-                path.pop().unwrap()
-            }
-            // cell has halite and ship can collect.
-            else {
-                Direction::Still
+                // if not enough fuel, stay still
+                let dir = if ship.halite < (sim.halite_at(&ship.position) /10) as usize {
+                    Direction::Still
+                }
+                // cell almost empty or ship full, move
+                else if sim.halite_at(&ship.position) < CELL_EMPTY
+                    || ship.is_full()
+                {
+                    path.pop().unwrap()
+                }
+                // cell has halite and ship can collect.
+                else {
+                    Direction::Still
+                };
+                output.push(dir);
+                Action::MoveShip(self.id, dir)
             };
-            output.push(dir);
-            let action = Action::MoveShip(self.id, dir);
 
             self.simulator.do_and_switch_to_next_turn(action)
         }
@@ -132,4 +137,19 @@ fn random_path(min_steps: i32, max_steps: i32) -> Vec<Direction> {
     }
 
     return directions
+}
+
+
+#[cfg(test)]
+mod tests {
+    use bot::simulating_bot::random_path;
+
+    #[test]
+    fn random_path_test() {
+        for _ in 0..10 {
+            let path = random_path(1, 5);
+            assert!(path.len() >= 1);
+            assert!(path.len() < 5);
+        }
+    }
 }

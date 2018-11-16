@@ -37,6 +37,9 @@ impl Ship {
     }
 
     pub fn generate(input: &mut Input, player_id: PlayerId, max_halite: usize) -> Ship {
+        // Why is this a variable?
+        assert_eq!(max_halite, 1000);
+
         input.read_and_parse_line();
         let id = ShipId(input.next_usize());
         let x = input.next_i32();
@@ -54,5 +57,38 @@ impl Entity for Ship {
 
     fn position(&self) -> Position {
         self.position
+    }
+}
+
+
+#[cfg(test)]
+pub mod test {
+    use hlt::ship::Ship;
+    use hlt::PlayerId;
+    use hlt::ShipId;
+    use hlt::position::Position;
+
+    pub fn sample_ship(pos: Position) -> Ship {
+        static mut SHIP_ID_COUNTER: usize = 0;
+
+        unsafe {
+            let id = SHIP_ID_COUNTER;
+            SHIP_ID_COUNTER += 1;
+
+            Ship {
+                owner: PlayerId(1),
+                id: ShipId(id),
+                position: pos,
+                halite: 0,
+                max_halite: 1000,
+            }
+        }
+    }
+
+    #[test]
+    fn sample_ship_test() {
+        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, 0);
+        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, 1);
+        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, 2);
     }
 }

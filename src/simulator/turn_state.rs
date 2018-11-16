@@ -27,7 +27,7 @@ pub struct TurnState {
 
     /// Only the halite in a few cells is collected.
     /// Copying the entire halite_map would be expensive.
-    overwrite_cells: Vec<(Position, u16)>,
+    overwrite_cells: HashMap<Position, u16>,
     overwrite_ships: HashMap<ShipId, Ship>,
 }
 
@@ -44,7 +44,7 @@ impl TurnState {
                 ship.position = ship.position.directional_offset(direction);
                 ship.halite += 100; //Placeholder
 
-                self.overwrite_cells.push((ship.position, 0));
+                self.overwrite_cells.insert(ship.position, 0);
                 self.overwrite_ships.insert(id, ship);
             }
             Action::None => {}
@@ -61,7 +61,10 @@ impl TurnState {
     }
 
     pub fn halite_at(&self, pos: &Position) -> u16 {
-        at_normalized(&self.halite_map, pos)
+        match self.overwrite_cells.get(pos) {
+            Some(halite) => halite.clone(),
+            None => at_normalized(&self.halite_map, pos)
+        }
     }
 
     /// # State and Rollback management
@@ -73,7 +76,7 @@ impl TurnState {
             halite_map: hlt_game.game_map.get_halite_map(),
             dropoffs_pos: my_shipyard_and_dropoff_positions(hlt_game),
             ships: hlt_game.ships.clone(),
-            overwrite_cells: Vec::new(),
+            overwrite_cells: HashMap::new(),
             overwrite_ships: HashMap::new(),
         }
     }
@@ -84,7 +87,7 @@ impl TurnState {
             halite_map: previous.halite_map.clone(),
             dropoffs_pos: previous.dropoffs_pos.clone(),
             ships: previous.ships.clone(),
-            overwrite_cells: Vec::new(),
+            overwrite_cells: HashMap::new(),
             overwrite_ships: HashMap::new()
         }
     }
@@ -143,4 +146,88 @@ fn at_normalized(map: &Vec<Vec<u16>>, pos: &Position) -> u16 {
     let height = map.len() as i32;
     let width = map[0].len() as i32;
     map[(((pos.y % height) + height) % height) as usize][(((pos.x % width) + width) % width) as usize]
+}
+
+
+
+#[cfg(test)]
+mod test {
+    use simulator::turn_state::TurnState;
+    use hlt::position::Position;
+    use std::collections::HashMap;
+    use simulator::turn_state::at_normalized_mut;
+    use simulator::turn_state::at_normalized;
+    use hlt::ship::Ship;
+    use hlt::ship::test::sample_ship;
+    use simulator::action::Action;
+    use hlt::direction::Direction;
+
+    pub fn create_test_data() -> TurnState {
+        TurnState {
+            turn_number: 42,
+            halite_map: test_map(),
+            dropoffs_pos: vec![Position{x: 12, y: 12}],
+            ships: HashMap::new(), //TODO test-ship
+            overwrite_cells: HashMap::new(),
+            overwrite_ships: HashMap::new(),
+        }
+    }
+
+    fn test_map() -> Vec<Vec<u16>> {
+        let width = 48;
+        let height = 48;
+
+        let mut halite_map: Vec<Vec<u16>> = Vec::with_capacity(height);
+        for i in 0..height {
+            let mut halite_row: Vec<u16> = Vec::with_capacity(width);
+            for j in 0.. width {
+                let halite = (i*j + j) %1001;
+                halite_row.push(halite as u16);
+            }
+            halite_map.push(halite_row);
+        }
+        halite_map
+    }
+
+    #[test]
+    fn did_action_and_get_ship() {
+        let mut turn_state = create_test_data();
+        let ship = sample_ship(Position{x: 3, y: 19});
+        let action = Action::MoveShip(ship.id, Direction::North);
+        turn_state.ships.insert(ship.id, ship.clone());
+
+        turn_state.did_action(action);
+        assert_eq!(turn_state.ship(&ship.id).position, Position{x:3,y:18})
+    }
+    //TODO Correct halite calculation
+    #[test]
+    fn did_action_and_get_halite_and_ship() {
+        let mut turn_state = create_test_data();
+        let ship = sample_ship(Position{x: 3, y: 19});
+        let action = Action::MoveShip(ship.id, Direction::North);
+        turn_state.ships.insert(ship.id, ship.clone());
+
+        let ship_still = sample_ship(Position{x: 31, y: 41});
+        let action2 = Action::MoveShip(ship_still.id, Direction::Still);
+        turn_state.ships.insert(ship_still.id, ship_still.clone());
+
+        turn_state.did_action(action);
+        turn_state.did_action(action2);
+        // Ship moved correctly
+        assert_eq!(turn_state.ship(&ship.id).position, Position{x:3,y:18});
+        assert_eq!(turn_state.ship(&ship_still.id).position, Position{x:31,y:41});
+        // Halite was collected
+        assert_eq!(turn_state.halite_at(&ship_still.position), 0)
+    }
+
+    #[test]
+    fn at_normalized_test() {
+        let mut map = test_map();
+        let pos = Position{x: 10, y: 15};
+
+        // set and read
+        *at_normalized_mut(&mut map, &pos) = 1111;
+        assert_eq!(at_normalized(&map, &pos), 1111);
+        assert_eq!(map[pos.y as usize][pos.x as usize], 1111);
+    }
 }
