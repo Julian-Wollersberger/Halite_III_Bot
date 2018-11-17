@@ -6,11 +6,9 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 use hlt::game::Game;
-use random_and_back::move_random_and_back;
 use bot::simulate_future;
 
 mod hlt;
-mod random_and_back;
 mod simulator;
 mod bot;
 

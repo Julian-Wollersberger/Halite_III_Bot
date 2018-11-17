@@ -173,6 +173,9 @@ fn max_collect(halite_in_cell: u16) -> u16 {
 }
 
 
+
+
+
 #[cfg(test)]
 mod test {
     use simulator::turn_state::TurnState;
@@ -180,7 +183,6 @@ mod test {
     use std::collections::HashMap;
     use simulator::turn_state::at_normalized_mut;
     use simulator::turn_state::at_normalized;
-    use hlt::ship::Ship;
     use hlt::ship::test::sample_ship;
     use simulator::action::Action;
     use hlt::direction::Direction;
@@ -197,16 +199,18 @@ mod test {
         }
     }
 
+    const TEST_HALITE_AMOUNT: u16 = 99;
+
     fn test_map() -> Vec<Vec<u16>> {
         let width = 48;
         let height = 48;
 
         let mut halite_map: Vec<Vec<u16>> = Vec::with_capacity(height);
-        for i in 0..height {
+        for _ in 0..height {
             let mut halite_row: Vec<u16> = Vec::with_capacity(width);
-            for j in 0.. width {
-                let halite = (i*j + j) %1001;
-                halite_row.push(halite as u16);
+            for _ in 0.. width {
+                let halite = TEST_HALITE_AMOUNT;
+                halite_row.push(halite);
             }
             halite_map.push(halite_row);
         }
@@ -231,7 +235,8 @@ mod test {
         assert_eq!(turn_state.ship(ship.id).position, Position{x:3,y:18});
         assert_eq!(turn_state.ship(ship_still.id).position, Position{x:31,y:41});
         // Halite was collected
-        assert_eq!(turn_state.halite_at(&ship_still.position), 0)
+        assert_eq!(turn_state.halite_at(&ship_still.position),
+            TEST_HALITE_AMOUNT - max_collect(TEST_HALITE_AMOUNT));
     }
 
     #[test]
@@ -242,16 +247,20 @@ mod test {
 
         turn_state.did_action(Action::MoveShip(ship.id, Direction::East));
         assert_eq!(turn_state.ship(ship.id).position, Position{x:51,y:50});
-        assert_ne!(turn_state.halite_at(&Position{x:51,y:50}), 0);
+        assert_eq!(turn_state.halite_at(&Position{x:51,y:50}), TEST_HALITE_AMOUNT);
 
         turn_state.did_action(Action::MoveShip(ship.id, Direction::South));
         assert_eq!(turn_state.ship(ship.id).position, Position{x:51,y:51});
-        assert_ne!(turn_state.halite_at(&Position{x:51,y:50}), 0);
+        assert_eq!(turn_state.halite_at(&Position{x:51,y:50}), TEST_HALITE_AMOUNT);
 
         // Stay still and collect
+        let pos = Position{x:51,y:51};
+        let halite_before = turn_state.halite_at(&pos);
         turn_state.did_action(Action::MoveShip(ship.id, Direction::Still));
-        assert_eq!(turn_state.ship(ship.id).position, Position{x:51,y:51});
-        assert_eq!(turn_state.halite_at(&Position{x:51,y:51}), 0);
+        // Stay still
+        assert_eq!(turn_state.ship(ship.id).position, pos);
+        // Now there is less than before.
+        assert!(turn_state.halite_at(&pos) < halite_before);
     }
 
     #[test]

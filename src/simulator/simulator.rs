@@ -4,7 +4,6 @@ use simulator::memory::Memory;
 use simulator::turn_state::TurnState;
 use hlt::ShipId;
 use hlt::ship::Ship;
-use hlt::player::Player;
 use hlt::position::Position;
 
 /// Be able to calculate the outcome of actions a few turns ahead.

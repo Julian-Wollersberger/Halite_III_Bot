@@ -1,4 +1,3 @@
-use simulator::action::Action;
 use hlt::ShipId;
 use std::collections::HashMap;
 use hlt::direction::Direction;
