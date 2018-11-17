@@ -87,8 +87,9 @@ pub mod test {
 
     #[test]
     fn sample_ship_test() {
-        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, 0);
-        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, 1);
-        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, 2);
+        let first = sample_ship(Position{x:0,y:0}).id.0;
+        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, first + 1);
+        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, first + 2);
+        assert_eq!(sample_ship(Position{x:0,y:0}).id.0, first + 3);
     }
 }

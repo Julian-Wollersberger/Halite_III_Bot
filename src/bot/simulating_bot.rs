@@ -60,6 +60,10 @@ impl<'turn> SimulatingBot<'turn> {
         dir = path.pop().unwrap();
         self.memory.store_moves(self.id, path);
 
+        if dir == Direction::Still {
+            self.logger.borrow_mut().log(&format!("Collecting."));
+        }
+
         //self.ship.move_ship(dir)
         self.simulator.id_to_ship(self.id).move_ship(dir)
     }

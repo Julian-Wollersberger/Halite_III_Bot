@@ -75,10 +75,12 @@ impl<'turn > Simulator<'turn > {
     }
 
     /// Get current turn
+    #[inline]
     fn current(&self) -> &TurnState{
         &self.future_turns[self.current_turn_index]
     }
     /// Get or init next turn
+    #[inline]
     fn next(&mut self) -> &mut TurnState {
         // init next if non-existent
         if self.future_turns.get(self.current_turn_index +1).is_none() {
@@ -89,7 +91,7 @@ impl<'turn > Simulator<'turn > {
     }
 
     pub fn id_to_ship(&self, id: ShipId) -> &Ship {
-        self.hlt_game.ships.get(&id).unwrap()
+        self.current().ship(id)
     }
     pub fn halite_at(&self, pos: &Position) -> u16 {
         self.current().halite_at(pos)

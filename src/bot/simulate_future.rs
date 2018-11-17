@@ -21,6 +21,9 @@ pub fn run(mut hlt_game: Game) {
             commands.push(bot.calculate());
         //}
 
+        //hlt_game.log.borrow_mut().log(&format!(
+        //    "Halite at ship: {}", hlt_game.game_map.at_position(&hlt_game.id_to_ship(ship_id).position).halite));
+
         Game::end_turn(&commands);
     }
 }

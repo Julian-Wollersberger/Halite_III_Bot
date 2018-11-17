@@ -6,6 +6,7 @@ use hlt::position::Position;
 use hlt::ship::Ship;
 use hlt::ShipId;
 use simulator::action::Action;
+use hlt::direction::Direction;
 
 //TODO Description
 /// The state of the game at a certain turn.
@@ -38,25 +39,35 @@ impl TurnState {
     /// has an effect on this turn.
     pub fn did_action(&mut self, action: Action) {
         match action {
-            Action::MoveShip(id, direction) => {
-                //TODO calculate halite.
-                let mut ship = self.ship(&id).clone();
-                ship.position = ship.position.directional_offset(direction);
-                ship.halite += 100; //Placeholder
-
-                self.overwrite_cells.insert(ship.position, 0);
-                self.overwrite_ships.insert(id, ship);
-            }
+            Action::MoveShip(id, direction) =>
+                self.move_ship(id, direction),
             Action::None => {}
         }
     }
 
+    fn move_ship(&mut self, id: ShipId, direction: Direction) {
+        let mut ship = self.ship(id).clone();
+        ship.position = ship.position.directional_offset(direction);
+
+        if direction == Direction::Still {
+            //TODO calculate halite when ship full.
+            let before = self.halite_at(&ship.position);
+            let collect = max_collect(before);
+
+            ship.halite += collect as usize;
+            self.overwrite_cells.insert(ship.position, before - collect);
+        } else {
+            //TODO fuel
+        }
+        self.overwrite_ships.insert(id, ship);
+    }
+
     /// Get a ship either from overwrite_ships or ships.
     /// Panics if the ship doesn't exist.
-    fn ship(&self, id: &ShipId) -> &Ship {
-        match self.overwrite_ships.get(id) {
+    pub fn ship(&self, id: ShipId) -> &Ship {
+        match self.overwrite_ships.get(&id) {
             Some(ship) => ship,
-            None => self.ships.get(id).unwrap()
+            None => self.ships.get(&id).unwrap()
         }
     }
 
@@ -148,6 +159,18 @@ fn at_normalized(map: &Vec<Vec<u16>>, pos: &Position) -> u16 {
     map[(((pos.y % height) + height) % height) as usize][(((pos.x % width) + width) % width) as usize]
 }
 
+/// This number can be substracted from the halite aount in thr cell.
+//fixme: What happens when ship is full?
+/// Collect: 25% of halite available in cell,
+/// rounded up to the nearest whole number.
+fn max_collect(halite_in_cell: u16) -> u16 {
+    if halite_in_cell >= 1 {
+        (halite_in_cell +3) /4
+    } else {
+        // No negative halite
+        0
+    }
+}
 
 
 #[cfg(test)]
@@ -161,6 +184,7 @@ mod test {
     use hlt::ship::test::sample_ship;
     use simulator::action::Action;
     use hlt::direction::Direction;
+    use simulator::turn_state::max_collect;
 
     pub fn create_test_data() -> TurnState {
         TurnState {
@@ -189,16 +213,6 @@ mod test {
         halite_map
     }
 
-    #[test]
-    fn did_action_and_get_ship() {
-        let mut turn_state = create_test_data();
-        let ship = sample_ship(Position{x: 3, y: 19});
-        let action = Action::MoveShip(ship.id, Direction::North);
-        turn_state.ships.insert(ship.id, ship.clone());
-
-        turn_state.did_action(action);
-        assert_eq!(turn_state.ship(&ship.id).position, Position{x:3,y:18})
-    }
     //TODO Correct halite calculation
     #[test]
     fn did_action_and_get_halite_and_ship() {
@@ -214,10 +228,30 @@ mod test {
         turn_state.did_action(action);
         turn_state.did_action(action2);
         // Ship moved correctly
-        assert_eq!(turn_state.ship(&ship.id).position, Position{x:3,y:18});
-        assert_eq!(turn_state.ship(&ship_still.id).position, Position{x:31,y:41});
+        assert_eq!(turn_state.ship(ship.id).position, Position{x:3,y:18});
+        assert_eq!(turn_state.ship(ship_still.id).position, Position{x:31,y:41});
         // Halite was collected
         assert_eq!(turn_state.halite_at(&ship_still.position), 0)
+    }
+
+    #[test]
+    fn multiple_actions() {
+        let mut turn_state = create_test_data();
+        let ship = sample_ship(Position{x: 50, y: 50});
+        turn_state.ships.insert(ship.id, ship.clone());
+
+        turn_state.did_action(Action::MoveShip(ship.id, Direction::East));
+        assert_eq!(turn_state.ship(ship.id).position, Position{x:51,y:50});
+        assert_ne!(turn_state.halite_at(&Position{x:51,y:50}), 0);
+
+        turn_state.did_action(Action::MoveShip(ship.id, Direction::South));
+        assert_eq!(turn_state.ship(ship.id).position, Position{x:51,y:51});
+        assert_ne!(turn_state.halite_at(&Position{x:51,y:50}), 0);
+
+        // Stay still and collect
+        turn_state.did_action(Action::MoveShip(ship.id, Direction::Still));
+        assert_eq!(turn_state.ship(ship.id).position, Position{x:51,y:51});
+        assert_eq!(turn_state.halite_at(&Position{x:51,y:51}), 0);
     }
 
     #[test]
@@ -229,5 +263,17 @@ mod test {
         *at_normalized_mut(&mut map, &pos) = 1111;
         assert_eq!(at_normalized(&map, &pos), 1111);
         assert_eq!(map[pos.y as usize][pos.x as usize], 1111);
+    }
+
+    #[test]
+    fn max_collect_test() {
+        assert_eq!(max_collect(0), 0);
+        assert_eq!(max_collect(1), 1);
+        assert_eq!(max_collect(99), 25);
+        //Collected real data
+        assert_eq!(max_collect(174), 174-130);
+        assert_eq!(max_collect(153), 153-114);
+        assert_eq!(max_collect(195), 195-146);
+        assert_eq!(max_collect(316), 316-237);
     }
 }
