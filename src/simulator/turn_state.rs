@@ -62,6 +62,8 @@ impl TurnState {
         self.overwrite_ships.insert(id, ship);
     }
 
+    /// # Helper and Getter
+
     /// Get a ship either from overwrite_ships or ships.
     /// Panics if the ship doesn't exist.
     pub fn ship(&self, id: ShipId) -> &Ship {
@@ -76,6 +78,10 @@ impl TurnState {
             Some(halite) => halite.clone(),
             None => at_normalized(&self.halite_map, pos)
         }
+    }
+
+    pub fn dropoff_near(&self, id: ShipId) -> Position {
+        self.dropoffs_pos[0].clone() //TODO find nearest.
     }
 
     /// # State and Rollback management

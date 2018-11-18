@@ -37,7 +37,7 @@ impl<'turn> SimulatingBot<'turn> {
     }
 
     /// Do the AI.
-    pub fn calculate(&mut self) -> Command {
+    pub fn calculate_command(&mut self) -> Command {
         // Outline:
         // come up with a random path
         // come up with a good path back to a dropoff
@@ -48,8 +48,8 @@ impl<'turn> SimulatingBot<'turn> {
 
         let mut path = self.memory.moves_of_ship(&self.id);
         if path.len() <= 0 {
-            path = self.path();
-            self.logger.borrow_mut().log(&format!("Step number: {}", path.len())[..])
+            path = self.make_path();
+            self.logger.borrow_mut().log(&format!("Path length: {}", path.len()))
         }
         // One movement per turn.
         dir = path.pop().unwrap();
@@ -60,54 +60,70 @@ impl<'turn> SimulatingBot<'turn> {
 
     /// Move random until the ship is almost filled up.
     /// Then go to a dropoff.
-    fn path(&mut self) -> Vec<Direction> {
+    fn make_path(&mut self) -> Vec<Direction> {
         const MOVE_RANDOM_CARGO: usize = 700;
-        let mut output = Vec::new();
         let gen = RandomPathGenerator::new();
+        let mut output = Vec::new();
 
         // Move random until the ship is partially filled up.
         while self.simulator.id_to_ship(self.id).halite <= MOVE_RANDOM_CARGO
             && output.len() < 10 // Fail-safe
         {
-            let dir = self.decide_direction(&gen);
+            let dir = if self.move_or_collect() {
+                gen.random_move()
+            } else { Direction::Still };
 
             output.push(dir);
+            self.log(dir);
             let action = Action::MoveShip(self.id, dir);
-            self.simulator.do_and_switch_to_next_turn(action)
+            self.simulator.do_and_switch_to_next_turn(action);
         }
-        
-        
+
+        // Then move until dropoff reached.
+        let dropoff_pos = self.simulator.dropoff_near(self.id);
+        while dropoff_pos != self.simulator.id_to_ship(self.id).position
+            && output.len() < 20
+        {
+            let dir = if self.move_or_collect() {
+                self.simulator.navigate(self.id, &dropoff_pos)
+            } else { Direction::Still };
+
+            output.push(dir);
+            self.log(dir);
+            let action = Action::MoveShip(self.id, dir);
+            self.simulator.do_and_switch_to_next_turn(action);
+        }
+
         output
     }
 
-    /// Comes up with a random direction,
-    /// or if the ship should collect.
-    // TODO or a generator that navigates to a dropoff. Lambda?
-    fn decide_direction(&self, gen: &RandomPathGenerator) -> Direction{
+    /// Returns true if the ship should move,
+    /// or false if it should collect.
+    fn move_or_collect(&self) -> bool {
         // If a cell contains less than this, it is considered empty.
         const CELL_EMPTY: u16 = 20;
         let ship = self.simulator.id_to_ship(self.id);
         let sim = &self.simulator;
 
-        self.logger.borrow_mut().log(&format!(
-            "ship: {}, map: {}, pos: {} {}", ship.halite,
-            sim.halite_at(&ship.position),
-            ship.position.x, ship.position.y));
-
-        // if not enough fuel, stay still
         if ship.halite < (sim.halite_at(&ship.position) /10) as usize {
-            Direction::Still
-
-        // cell almost empty or ship full, move
+            // if not enough fuel, stay still
+            false
         } else if sim.halite_at(&ship.position) <= CELL_EMPTY
-            || ship.is_full()
-        {
-            gen.random_move()
-
-        // cell has halite and ship can collect.
+            || ship.is_full() {
+            // cell almost empty or ship full, move
+            true
         } else {
-            Direction::Still
+            // cell has halite and ship can collect.
+            false
         }
+    }
+
+    fn log(&self, dir: Direction) {
+        let ship = self.simulator.id_to_ship(self.id);
+        self.logger.borrow_mut().log(&format!(
+            "ship: {}, map: {}, pos: {} {}, move: {:?}", ship.halite,
+            self.simulator.halite_at(&ship.position),
+            ship.position.x, ship.position.y, dir));
     }
 }
 
@@ -115,7 +131,5 @@ impl<'turn> SimulatingBot<'turn> {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn random_path_test() {
-    }
+
 }

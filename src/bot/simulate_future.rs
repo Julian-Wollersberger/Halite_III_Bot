@@ -18,7 +18,7 @@ pub fn run(mut hlt_game: Game) {
         let ship_id = my_ships[0];
         //for ship_id in my_ships {
             let mut bot: SimulatingBot = SimulatingBot::new(ship_id.clone(), &mut simulator, hlt_game.log.clone());
-            commands.push(bot.calculate());
+            commands.push(bot.calculate_command());
         //}
 
         //hlt_game.log.borrow_mut().log(&format!(

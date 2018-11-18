@@ -5,6 +5,7 @@ use simulator::turn_state::TurnState;
 use hlt::ShipId;
 use hlt::ship::Ship;
 use hlt::position::Position;
+use hlt::direction::Direction;
 
 /// Be able to calculate the outcome of actions a few turns ahead.
 /// I'm trying to not copy the gamefield data more than once per turn.
@@ -94,5 +95,16 @@ impl<'turn > Simulator<'turn > {
     }
     pub fn halite_at(&self, pos: &Position) -> u16 {
         self.current().halite_at(pos)
+    }
+    pub fn dropoff_near(&self, id: ShipId) -> Position {
+        self.current().dropoff_near(id)
+    }
+
+    /// TODO temporary
+    pub fn navigate(&self, id: ShipId, dest: &Position) -> Direction {
+        self.hlt_game.game_map.get_unsafe_moves(
+            &self.id_to_ship(id).position,
+            dest
+        )[0]
     }
 }
