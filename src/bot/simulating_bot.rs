@@ -1,3 +1,5 @@
+extern crate rand;
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -9,6 +11,8 @@ use simulator::memory::Memory;
 use simulator::simulator::Simulator;
 use simulator::action::Action;
 use bot::random_path_generator::RandomPathGenerator;
+use hlt::ship::Ship;
+use rand::Rng;
 
 pub struct SimulatingBot<'turn > {
     simulator: &'turn mut Simulator<'turn>,
@@ -36,19 +40,12 @@ impl<'turn> SimulatingBot<'turn> {
         }
     }
 
-    /// Do the AI.
     pub fn calculate_command(&mut self) -> Command {
-        // Outline:
-        // come up with a random path
-        // come up with a good path back to a dropoff
-        // simulate how much halite that would collect
-        // repeat 10-100 times and take the best one.
-
         let dir: Direction;
 
         let mut path = self.memory.moves_of_ship(&self.id);
         if path.len() <= 0 {
-            path = self.make_path();
+            path = self.calc_good_path();
             self.logger.borrow_mut().log(&format!("Path length: {}", path.len()))
         }
         // One movement per turn.
@@ -58,23 +55,62 @@ impl<'turn> SimulatingBot<'turn> {
         self.simulator.id_to_ship(self.id).move_ship(dir)
     }
 
+    /// Outline:
+    /// come up with a random path
+    /// come up with a good path back to a dropoff
+    /// simulate how much halite that would collect
+    /// repeat 10-100 times and take the best one.
+    fn calc_good_path(&mut self) -> Vec<Direction> {
+        let mut best_score = 0;
+        let mut best_path = Vec::new();
+        self.simulator.rollback();
+        
+        // Find the best out of some random ones.
+        for i in 0..50 {
+            let go_back_cargo = rand::thread_rng().gen_range(200, 800);
+            let cell_empty = biased_range(10, 100);
+            let path = self.some_complete_path(go_back_cargo, cell_empty);
+            // Simulator & ship changed state.
+            let score = 10 * self.ship().halite / path.len();
+
+            if score > 200 { self.log(format!(
+                "Path {}, len {}, go_back {}, cell_empty {} \
+                would collect {} and score\t{}",
+                    i, path.len(), go_back_cargo, cell_empty,
+                    self.ship().halite, score));
+            }
+            
+            if  score > best_score {
+                best_score = score;
+                best_path = path;
+            }
+            self.simulator.rollback();
+        }
+        
+        // Apply and return the best one.
+        self.log(format!("Best score {}, path length {}", best_score, best_path.len()));
+        self.replay_path(&best_path);
+        self.simulator.apply();
+        best_path
+    }
+
     /// Move random until the ship is almost filled up.
     /// Then go to a dropoff.
-    fn make_path(&mut self) -> Vec<Direction> {
-        const MOVE_RANDOM_CARGO: usize = 700;
+    fn some_complete_path(&mut self, go_back_cargo: usize, cell_empty: u16) -> Vec<Direction> {
+        const MAX_PATH_LEN: usize = 200;
         let gen = RandomPathGenerator::new();
-        let mut output = Vec::new();
+        let mut path = Vec::new();
 
         // Move random until the ship is partially filled up.
-        while self.simulator.id_to_ship(self.id).halite <= MOVE_RANDOM_CARGO
-            && output.len() < 10 // Fail-safe
+        while self.simulator.id_to_ship(self.id).halite <= go_back_cargo
+            && path.len() < MAX_PATH_LEN /2 // Fail-safe
         {
-            let dir = if self.move_or_collect() {
+            let dir = if self.move_or_collect(cell_empty) {
                 gen.random_move()
             } else { Direction::Still };
 
-            output.push(dir);
-            self.log(dir);
+            path.push(dir);
+            //self.log_ship(dir);
             let action = Action::MoveShip(self.id, dir);
             self.simulator.do_and_switch_to_next_turn(action);
         }
@@ -82,33 +118,38 @@ impl<'turn> SimulatingBot<'turn> {
         // Then move until dropoff reached.
         let dropoff_pos = self.simulator.dropoff_near(self.id);
         while dropoff_pos != self.simulator.id_to_ship(self.id).position
-            && output.len() < 20
+            && path.len() < MAX_PATH_LEN
         {
-            let dir = if self.move_or_collect() {
+            let dir = if self.move_or_collect(cell_empty) {
                 self.simulator.navigate(self.id, &dropoff_pos)
             } else { Direction::Still };
 
-            output.push(dir);
-            self.log(dir);
+            path.push(dir);
+            //self.log_ship(dir);
             let action = Action::MoveShip(self.id, dir);
             self.simulator.do_and_switch_to_next_turn(action);
         }
 
+        // Invert the order.
+        let mut output = Vec::with_capacity(path.len());
+        for dir in path.into_iter().rev() {
+            output.push(dir);
+        }
+        
         output
     }
 
     /// Returns true if the ship should move,
     /// or false if it should collect.
-    fn move_or_collect(&self) -> bool {
+    fn move_or_collect(&self, cell_empty: u16) -> bool {
         // If a cell contains less than this, it is considered empty.
-        const CELL_EMPTY: u16 = 20;
         let ship = self.simulator.id_to_ship(self.id);
         let sim = &self.simulator;
 
         if ship.halite < (sim.halite_at(&ship.position) /10) as usize {
             // if not enough fuel, stay still
             false
-        } else if sim.halite_at(&ship.position) <= CELL_EMPTY
+        } else if sim.halite_at(&ship.position) <= cell_empty
             || ship.is_full() {
             // cell almost empty or ship full, move
             true
@@ -117,16 +158,50 @@ impl<'turn> SimulatingBot<'turn> {
             false
         }
     }
+    /// Move the ship on the path to change the simulator's state.
+    fn replay_path(&mut self, path: &Vec<Direction>) {
+        for dir in path {
+            let action = Action::MoveShip(self.id, dir.clone());
+            self.simulator.do_and_switch_to_next_turn(action);
+        }
+    }
 
-    fn log(&self, dir: Direction) {
+    fn log_ship(&self, dir: Direction) {
         let ship = self.simulator.id_to_ship(self.id);
-        self.logger.borrow_mut().log(&format!(
+        self.log(format!(
             "ship: {}, map: {}, pos: {} {}, move: {:?}", ship.halite,
             self.simulator.halite_at(&ship.position),
             ship.position.x, ship.position.y, dir));
     }
+    #[inline]
+    fn log(&self, m: String) {
+        self.logger.borrow_mut().log(&m)
+    }
+    
+    fn ship(&self) -> &Ship {
+        self.simulator.id_to_ship(self.id)
+    }
 }
 
+/// Returns a value between min and max
+/// Where small values are more likely.
+fn biased_range(min: u16, max: u16) -> u16 {
+    // Quadratic
+    //let sqrt = rand::thread_rng().gen_range((min as f64).sqrt(), (max as f64).sqrt());
+    //(sqrt * sqrt) as u16
+    
+    /*// Exponential
+    let min_exp = (min as f64).log2();
+    let max_exp = (max as f64).log2();
+
+    let exponent = rand::thread_rng().gen_range(min_exp, max_exp);
+    2_f64.powf(exponent) as u16
+    */
+    // Linear. Defeats the purpose of this function...
+    //rand::thread_rng().gen_range(min, max)
+    
+    50
+}
 
 
 #[cfg(test)]

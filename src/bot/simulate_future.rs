@@ -17,13 +17,17 @@ pub fn run(mut hlt_game: Game) {
 
         let ship_id = my_ships[0];
         //for ship_id in my_ships {
-            let mut bot: SimulatingBot = SimulatingBot::new(ship_id.clone(), &mut simulator, hlt_game.log.clone());
+            let mut bot: SimulatingBot = SimulatingBot::new(ship_id, &mut simulator, hlt_game.log.clone());
             commands.push(bot.calculate_command());
         //}
-
-        //hlt_game.log.borrow_mut().log(&format!(
-        //    "Halite at ship: {}", hlt_game.game_map.at_position(&hlt_game.id_to_ship(ship_id).position).halite));
-
+        
+        /*let ship = hlt_game.id_to_ship(ship_id);
+        hlt_game.log.borrow_mut().log(&format!(
+            "Real: ship: {}, map: {}, pos: {} {}", ship.halite,
+            hlt_game.game_map.at_position(&ship.position).halite,
+            ship.position.x, ship.position.y));
+            */
+        
         Game::end_turn(&commands);
     }
 }

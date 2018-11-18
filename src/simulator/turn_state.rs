@@ -47,22 +47,34 @@ impl TurnState {
 
     fn move_ship(&mut self, id: ShipId, direction: Direction) {
         let mut ship = self.ship(id).clone();
-        ship.position = ship.position.directional_offset(direction);
-
-        if direction == Direction::Still {
-            //TODO calculate halite when ship full.
+        let mut real_direction = direction;
+        // Move
+        if direction != Direction::Still {
+            let before = self.halite_at(&ship.position) as usize;
+            let cost = before / 10;
+            // Enough fuel
+            if cost <= ship.halite {
+                ship.halite -= cost;
+                ship.position = ship.position.directional_offset(direction);
+            } else {
+                // Not enough: stand still.
+                real_direction = Direction::Still;
+            }
+        }
+        // Either stand still or not enough fuel.
+        if real_direction == Direction::Still {
             let before = self.halite_at(&ship.position);
             let collect = max_collect(before);
+            //TODO calculate halite when ship becomes full.
 
             ship.halite += collect as usize;
             self.overwrite_cells.insert(ship.position, before - collect);
-        } else {
-            //TODO fuel
         }
+        
         self.overwrite_ships.insert(id, ship);
     }
 
-    /// # Helper and Getter
+    /// # Helpers and Getters
 
     /// Get a ship either from overwrite_ships or ships.
     /// Panics if the ship doesn't exist.

@@ -27,6 +27,7 @@ fn main() {
     Game::ready("Julius-Beides");
 
     game.log.borrow_mut().log(&format!("Successfully created bot! My Player ID is {}. Bot rng seed is {}.", game.my_id.0, rng_seed));
+    //game.log.borrow_mut().log(&format!("Available Halite: {}", ));
 
     //fixed_pattern_bot::run(game);
     //move_random_and_back::run(game);

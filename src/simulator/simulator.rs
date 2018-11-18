@@ -102,9 +102,13 @@ impl<'turn > Simulator<'turn > {
 
     /// TODO temporary
     pub fn navigate(&self, id: ShipId, dest: &Position) -> Direction {
-        self.hlt_game.game_map.get_unsafe_moves(
-            &self.id_to_ship(id).position,
-            dest
-        )[0]
+        match self.hlt_game.game_map.get_unsafe_moves(
+                &self.id_to_ship(id).position,
+                dest
+            ).get(0)
+        {
+            Some(d) => d.clone(),
+            None => Direction::Still,
+        }
     }
 }
