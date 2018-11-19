@@ -7,6 +7,8 @@ use hlt::ship::Ship;
 use hlt::ShipId;
 use simulator::action::Action;
 use hlt::direction::Direction;
+use simulator::logger::log;
+use simulator::memory::Memory;
 
 //TODO Description
 /// The state of the game at a certain turn.
@@ -38,6 +40,8 @@ impl TurnState {
     /// A bot did action on the previous turn which
     /// has an effect on this turn.
     pub fn did_action(&mut self, action: Action) {
+        //log(&format!("Next turn action {{:?}}, overwrite_ships {}, overwrite_cells {}",
+        //    self.overwrite_ships.len(), self.overwrite_cells.len()));
         match action {
             Action::MoveShip(id, direction) =>
                 self.move_ship(id, direction),
@@ -132,15 +136,23 @@ impl TurnState {
         }
     }
 
-    pub fn new_next(previous: &TurnState) -> TurnState {
-        TurnState {
-            turn_number: previous.turn_number + 1,
+    pub fn new_next(previous: &TurnState, memory: &Memory) -> TurnState {
+        let turn_number = previous.turn_number + 1;
+        let mut turn = TurnState {
+            turn_number,
             halite_map: previous.halite_map.clone(),
             dropoffs_pos: previous.dropoffs_pos.clone(),
             ships: previous.ships.clone(),
-            overwrite_cells: HashMap::new(),
-            overwrite_ships: HashMap::new()
-        }
+            overwrite_cells: memory.cell_ow_on(turn_number),
+            overwrite_ships: memory.ship_ow_on(turn_number),
+        };
+        // Moves that were already decided by other bots
+        // in previous turns.
+        turn.write_cells_and_ships();
+        turn.overwrite_cells.clear();
+        turn.overwrite_ships.clear();
+        
+        turn
     }
 
     /// Let this turn know of previous' overwrites.
@@ -156,7 +168,16 @@ impl TurnState {
     }
     /// Apply decided actions (overwrites), so other bots know
     /// of them. Mutates the halite_map and ships.
-    pub fn apply(&mut self) {
+    pub fn apply(&mut self, memory: &Memory) {
+        memory.store_cell_ow(self.turn_number, self.overwrite_cells.clone());
+        memory.store_ship_ow(self.turn_number, self.overwrite_ships.clone());
+        
+        self.write_cells_and_ships();
+        
+        self.overwrite_cells.clear();
+        self.overwrite_ships.clear();
+    }
+    fn write_cells_and_ships(&mut self) {
         for (pos, halite) in &self.overwrite_cells {
             // Write at the location of the cell pointer.
             * at_normalized_mut(&mut self.halite_map, pos) = *halite;
@@ -164,8 +185,6 @@ impl TurnState {
         for (id,ship) in self.overwrite_ships.drain() {
             self.ships.insert(id, ship);
         }
-        self.overwrite_cells.clear();
-        self.overwrite_ships.clear();
     }
 }
 /// Get a list of positions where ships can deposit their cargo.

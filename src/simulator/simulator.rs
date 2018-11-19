@@ -6,6 +6,7 @@ use hlt::ShipId;
 use hlt::ship::Ship;
 use hlt::position::Position;
 use hlt::direction::Direction;
+use simulator::logger::log;
 
 /// Be able to calculate the outcome of actions a few turns ahead.
 /// I'm trying to not copy the gamefield data more than once per turn.
@@ -21,7 +22,7 @@ pub struct Simulator<'turn > {
 }
 
 impl<'turn > Simulator<'turn > {
-    pub fn new(hlt_game: &'turn Game, memory: &'turn mut Memory) -> Simulator<'turn > {
+    pub fn new(hlt_game: &'turn Game, memory: &'turn Memory) -> Simulator<'turn > {
         Simulator {
             hlt_game,
             memory,
@@ -54,6 +55,8 @@ impl<'turn > Simulator<'turn > {
         // Third, switch to next turn.
         self.next(); //Side effect: initialize next.
         self.current_turn_index += 1;
+        //Restore ships from memory, so is_safe() works.
+        self.next();
     }
 
     /// clear the changes made by actions since the last apply()
@@ -69,7 +72,7 @@ impl<'turn > Simulator<'turn > {
     pub fn apply(&mut self) {
         //TODO Write to memory
         for turn in self.future_turns.iter_mut() {
-            turn.apply();
+            turn.apply(&self.memory);
         }
         self.current_turn_index = 0;
     }
@@ -84,7 +87,7 @@ impl<'turn > Simulator<'turn > {
     fn next(&mut self) -> &mut TurnState {
         // init next if non-existent
         if self.future_turns.get(self.current_turn_index +1).is_none() {
-            let next = TurnState::new_next(self.current());
+            let next = TurnState::new_next(self.current(), self.memory);
             self.future_turns.push(next)
         }
         &mut self.future_turns[self.current_turn_index +1]
@@ -111,11 +114,13 @@ impl<'turn > Simulator<'turn > {
         // Immutable next()
         if let Some(turn) = self.future_turns.get(self.current_turn_index +1) {
             // No ship there?
-            turn.ship_at(dest).is_none()
+            let erg = turn.ship_at(dest).is_none();
+            log(&format!("Ship? {}", !erg));
+            erg
         } else {
-            // next() doesn't exist and therefore
-            // no ship can wants to move there.
-            false
+            // next() doesn't exist and moves
+            // are not restored from memory.
+            panic!("simulator.next() not initialised yet :(");
         }
     }
 }

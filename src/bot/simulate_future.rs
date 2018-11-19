@@ -25,13 +25,12 @@ pub fn run(mut hlt_game: Game) {
             unsafe {
                 let sim: *mut Simulator = &mut simulator;
                 let mut bot: SimulatingBot = SimulatingBot::new(
-                    ship_id.clone(), &mut *sim,
-                    hlt_game.log.clone());
+                    ship_id.clone(), &mut *sim);
                 commands.push(bot.calculate_command());
             }
         }
         /*let ship = hlt_game.id_to_ship(ship_id);
-        hlt_game.log.borrow_mut().log(&format!(
+        log(&format!(
             "Real: ship: {}, map: {}, pos: {} {}", ship.halite,
             hlt_game.game_map.at_position(&ship.position).halite,
             ship.position.x, ship.position.y)); */

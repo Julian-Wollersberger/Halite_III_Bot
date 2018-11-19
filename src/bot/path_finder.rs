@@ -5,6 +5,7 @@ use rand::Rng;
 use hlt::ship::Ship;
 use simulator::simulator::Simulator;
 use hlt::position::Position;
+use simulator::logger::log;
 
 /// Do moves that don't backtrack or stand still.
 /// Make sure to only move in one quadrant.
@@ -35,6 +36,7 @@ impl PathFinder {
         let preferred = self.random_move();
         
         if simulator.is_safe(ship.position.directional_offset(preferred)) {
+            //log(&format!("Preferred {:?}", preferred));
             preferred
         } else {
             let other =
@@ -42,8 +44,10 @@ impl PathFinder {
                     self.vertical_dir
                 } else { self.horizontal_dir };
             if simulator.is_safe(ship.position.directional_offset(other)) {
+                log(&format!("Other {:?}, Preferred {:?}", other, preferred));
                 other
             } else {
+                log(&format!("Still :( ,Other {:?}, Preferred {:?}", other, preferred));
                 Direction::Still
             }
         }
@@ -68,6 +72,8 @@ impl PathFinder {
         for dir in simulator.useful_directions(&ship.position, dest) {
             if simulator.is_safe(ship.position.directional_offset(dir)) {
                 safe.push(dir);
+            } else {
+                log(&format!("Unsafe: {:?}", dir));
             }
         }
         // Random entry or still.

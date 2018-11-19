@@ -7,6 +7,8 @@ use std::time::UNIX_EPOCH;
 
 use hlt::game::Game;
 use bot::simulate_future;
+use simulator::logger::log;
+use simulator::logger::set_logger;
 
 mod hlt;
 mod simulator;
@@ -26,9 +28,11 @@ fn main() {
     // As soon as you call "ready" function below, the 2 second per turn timer will start.
     Game::ready("Julius-Beides");
 
-    game.log.borrow_mut().log(&format!("Successfully created bot! My Player ID is {}. Bot rng seed is {}.", game.my_id.0, rng_seed));
-    //game.log.borrow_mut().log(&format!("Available Halite: {}", ));
-
+    set_logger(game.log.clone());
+    log("Successfully initialised global logger!");
+    log(&format!("Successfully created bot! \
+        My Player ID is {}.", game.my_id.0));
+    
     //fixed_pattern_bot::run(game);
     //move_random_and_back::run(game);
     //overseer::run(game);

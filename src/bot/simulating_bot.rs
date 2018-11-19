@@ -13,11 +13,11 @@ use simulator::action::Action;
 use bot::path_finder::PathFinder;
 use hlt::ship::Ship;
 use rand::Rng;
+use simulator::logger::log;
 
 pub struct SimulatingBot<'turn > {
     simulator: &'turn mut Simulator<'turn>,
     memory: &'turn Memory,
-    logger: Rc<RefCell<Log>>,
 
     id: ShipId,
 }
@@ -30,12 +30,10 @@ impl<'turn> SimulatingBot<'turn> {
     pub fn new<'t>(
         id: ShipId,
         simulator: &'t mut Simulator<'t>,
-        logger: Rc<RefCell<Log>>,
     ) -> SimulatingBot<'t> {
         SimulatingBot {
             simulator,
             memory: simulator.memory,
-            logger,
             id,
         }
     }
@@ -43,14 +41,14 @@ impl<'turn> SimulatingBot<'turn> {
     pub fn calculate_command(&mut self) -> Command {
         let dir: Direction;
 
-        let mut path = self.memory.moves_of_ship(&self.id);
+        let mut path = self.memory.ship_path(&self.id);
         if path.len() <= 0 {
             path = self.calc_good_path();
-            self.logger.borrow_mut().log(&format!("Path length: {}", path.len()))
+            log(&format!("Path length: {}", path.len()))
         }
         // One movement per turn.
         dir = path.pop().unwrap();
-        self.memory.store_moves(self.id, path);
+        self.memory.store_path(self.id, path);
 
         self.simulator.id_to_ship(self.id).move_ship(dir)
     }
@@ -62,7 +60,7 @@ impl<'turn> SimulatingBot<'turn> {
     /// repeat 10-100 times and take the best one.
     fn calc_good_path(&mut self) -> Vec<Direction> {
         let mut best_score = 0;
-        let mut best_path = Vec::new();
+        let mut best_path = vec![Direction::Still];
         self.simulator.rollback();
         
         // Find the best out of some random ones.
@@ -70,15 +68,15 @@ impl<'turn> SimulatingBot<'turn> {
             let go_back_cargo = rand::thread_rng().gen_range(200, 800);
             let cell_empty = biased_range(10, 100);
             let path = self.some_complete_path(go_back_cargo, cell_empty);
+            
             // Simulator & ship changed state.
             let score = 10 * self.ship().halite / path.len();
-
-            if score > 0 { self.log(format!(
+            /*if score > 0 { log(&format!(
                 "Path {}, len {}, go_back {}, cell_empty {} \
                 would collect {} and score\t{}",
                     i, path.len(), go_back_cargo, cell_empty,
                     self.ship().halite, score));
-            }
+            }*/
             
             if  score > best_score {
                 best_score = score;
@@ -88,7 +86,7 @@ impl<'turn> SimulatingBot<'turn> {
         }
         
         // Apply and return the best one.
-        self.log(format!("Best score {}, path length {}", best_score, best_path.len()));
+        log(&format!("Best score {}, path length {}", best_score, best_path.len()));
         self.replay_path(&best_path);
         self.simulator.apply();
         best_path
@@ -106,11 +104,12 @@ impl<'turn> SimulatingBot<'turn> {
             && path.len() < MAX_PATH_LEN /2 // Fail-safe
         {
             let dir = if self.move_or_collect(cell_empty) {
+                //log("Move");
                 finder.safe_random_move(self.ship(), self.simulator)
             } else { Direction::Still };
 
             path.push(dir);
-            self.log_ship(dir);
+            //self.log_ship(dir);
             let action = Action::MoveShip(self.id, dir);
             self.simulator.do_and_switch_to_next_turn(action);
         }
@@ -126,7 +125,7 @@ impl<'turn> SimulatingBot<'turn> {
             } else { Direction::Still };
 
             path.push(dir);
-            self.log_ship(dir);
+            //self.log_ship(dir);
             let action = Action::MoveShip(self.id, dir);
             self.simulator.do_and_switch_to_next_turn(action);
         }
@@ -170,14 +169,10 @@ impl<'turn> SimulatingBot<'turn> {
 
     fn log_ship(&self, dir: Direction) {
         let ship = self.simulator.id_to_ship(self.id);
-        self.log(format!(
+        log(&format!(
             "ship: {}, map: {}, pos: {} {}, move: {:?}", ship.halite,
             self.simulator.halite_at(&ship.position),
             ship.position.x, ship.position.y, dir));
-    }
-    #[inline]
-    fn log(&self, m: String) {
-        self.logger.borrow_mut().log(&m)
     }
     
     fn ship(&self) -> &Ship {
