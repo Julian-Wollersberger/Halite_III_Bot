@@ -99,16 +99,23 @@ impl<'turn > Simulator<'turn > {
     pub fn dropoff_near(&self, id: ShipId) -> Position {
         self.current().dropoff_near(id)
     }
-
-    /// TODO temporary
-    pub fn navigate(&self, id: ShipId, dest: &Position) -> Direction {
-        match self.hlt_game.game_map.get_unsafe_moves(
-                &self.id_to_ship(id).position,
-                dest
-            ).get(0)
-        {
-            Some(d) => d.clone(),
-            None => Direction::Still,
+    
+    #[inline]
+    /// Directions that would move the ship closer to the destination.
+    pub fn useful_directions(&self, src: &Position, dst: &Position) -> Vec<Direction> {
+        self.hlt_game.game_map.get_unsafe_moves(src, dst)
+    }
+    
+    /// Will a ship be there in the next turn?
+    pub fn is_safe(&self, dest: Position) -> bool {
+        // Immutable next()
+        if let Some(turn) = self.future_turns.get(self.current_turn_index +1) {
+            // No ship there?
+            turn.ship_at(dest).is_none()
+        } else {
+            // next() doesn't exist and therefore
+            // no ship can wants to move there.
+            false
         }
     }
 }

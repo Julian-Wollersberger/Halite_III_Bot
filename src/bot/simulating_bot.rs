@@ -10,7 +10,7 @@ use hlt::ShipId;
 use simulator::memory::Memory;
 use simulator::simulator::Simulator;
 use simulator::action::Action;
-use bot::random_path_generator::RandomPathGenerator;
+use bot::path_finder::PathFinder;
 use hlt::ship::Ship;
 use rand::Rng;
 
@@ -66,14 +66,14 @@ impl<'turn> SimulatingBot<'turn> {
         self.simulator.rollback();
         
         // Find the best out of some random ones.
-        for i in 0..50 {
+        for i in 0..1 {
             let go_back_cargo = rand::thread_rng().gen_range(200, 800);
             let cell_empty = biased_range(10, 100);
             let path = self.some_complete_path(go_back_cargo, cell_empty);
             // Simulator & ship changed state.
             let score = 10 * self.ship().halite / path.len();
 
-            if score > 200 { self.log(format!(
+            if score > 0 { self.log(format!(
                 "Path {}, len {}, go_back {}, cell_empty {} \
                 would collect {} and score\t{}",
                     i, path.len(), go_back_cargo, cell_empty,
@@ -98,34 +98,35 @@ impl<'turn> SimulatingBot<'turn> {
     /// Then go to a dropoff.
     fn some_complete_path(&mut self, go_back_cargo: usize, cell_empty: u16) -> Vec<Direction> {
         const MAX_PATH_LEN: usize = 200;
-        let gen = RandomPathGenerator::new();
+        let finder = PathFinder::new();
         let mut path = Vec::new();
 
         // Move random until the ship is partially filled up.
-        while self.simulator.id_to_ship(self.id).halite <= go_back_cargo
+        while self.ship().halite <= go_back_cargo
             && path.len() < MAX_PATH_LEN /2 // Fail-safe
         {
             let dir = if self.move_or_collect(cell_empty) {
-                gen.random_move()
+                finder.safe_random_move(self.ship(), self.simulator)
             } else { Direction::Still };
 
             path.push(dir);
-            //self.log_ship(dir);
+            self.log_ship(dir);
             let action = Action::MoveShip(self.id, dir);
             self.simulator.do_and_switch_to_next_turn(action);
         }
 
         // Then move until dropoff reached.
         let dropoff_pos = self.simulator.dropoff_near(self.id);
-        while dropoff_pos != self.simulator.id_to_ship(self.id).position
+        while dropoff_pos != self.ship().position
             && path.len() < MAX_PATH_LEN
         {
             let dir = if self.move_or_collect(cell_empty) {
-                self.simulator.navigate(self.id, &dropoff_pos)
+                finder.navigate_to_dest(&dropoff_pos,
+                    self.ship(), self.simulator)
             } else { Direction::Still };
 
             path.push(dir);
-            //self.log_ship(dir);
+            self.log_ship(dir);
             let action = Action::MoveShip(self.id, dir);
             self.simulator.do_and_switch_to_next_turn(action);
         }
@@ -143,13 +144,14 @@ impl<'turn> SimulatingBot<'turn> {
     /// or false if it should collect.
     fn move_or_collect(&self, cell_empty: u16) -> bool {
         // If a cell contains less than this, it is considered empty.
-        let ship = self.simulator.id_to_ship(self.id);
+        let ship = self.ship();
         let sim = &self.simulator;
+        let pos = &ship.position;//.directional_offset(offset);
 
-        if ship.halite < (sim.halite_at(&ship.position) /10) as usize {
+        if ship.halite < (sim.halite_at(pos) /10) as usize {
             // if not enough fuel, stay still
             false
-        } else if sim.halite_at(&ship.position) <= cell_empty
+        } else if sim.halite_at(pos) <= cell_empty
             || ship.is_full() {
             // cell almost empty or ship full, move
             true

@@ -9,24 +9,32 @@ pub fn run(mut hlt_game: Game) {
     let mut memory = Memory::new();
 
     loop {
+        if hlt_game.turn_number == 10 {
+            first_turn(&mut hlt_game);
+        }
+        
         hlt_game.update_frame();
         let mut commands = Vec::new();
 
         let mut simulator = Simulator::new(&hlt_game, &mut memory);
         let my_ships = &hlt_game.me().ship_ids;
 
-        let ship_id = my_ships[0];
-        //for ship_id in my_ships {
-            let mut bot: SimulatingBot = SimulatingBot::new(ship_id, &mut simulator, hlt_game.log.clone());
-            commands.push(bot.calculate_command());
-        //}
-        
+        for ship_id in my_ships {
+            // Borrowing in loops is a nightmare.
+            // Borrow &mut multiple times.
+            unsafe {
+                let sim: *mut Simulator = &mut simulator;
+                let mut bot: SimulatingBot = SimulatingBot::new(
+                    ship_id.clone(), &mut *sim,
+                    hlt_game.log.clone());
+                commands.push(bot.calculate_command());
+            }
+        }
         /*let ship = hlt_game.id_to_ship(ship_id);
         hlt_game.log.borrow_mut().log(&format!(
             "Real: ship: {}, map: {}, pos: {} {}", ship.halite,
             hlt_game.game_map.at_position(&ship.position).halite,
-            ship.position.x, ship.position.y));
-            */
+            ship.position.x, ship.position.y)); */
         
         Game::end_turn(&commands);
     }

@@ -91,6 +91,28 @@ impl TurnState {
             None => at_normalized(&self.halite_map, pos)
         }
     }
+    
+    /// Check if cell is occupied.
+    // TODO Optimize: HashMap<Position, ShipId>
+    // But that is redundant data.
+    pub fn ship_at(&self, pos: Position) -> Option<ShipId> {
+        // Iterate through all ships and find the one with the given position.
+        // Asserts that all overwrite_ships are in ships.
+        for (id, ship) in &self.ships {
+            let position =
+                if let Some(overwrite) = self.overwrite_ships.get(id) {
+                    overwrite.position
+                } else {
+                    ship.position
+                };
+            
+            // If found, jump out of loop.
+            if pos == position {
+                return Some(id.clone());
+            }
+        }
+        None
+    }
 
     pub fn dropoff_near(&self, id: ShipId) -> Position {
         self.dropoffs_pos[0].clone() //TODO find nearest.
