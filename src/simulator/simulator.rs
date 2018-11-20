@@ -23,12 +23,14 @@ pub struct Simulator<'turn > {
 
 impl<'turn > Simulator<'turn > {
     pub fn new(hlt_game: &'turn Game, memory: &'turn Memory) -> Simulator<'turn > {
-        Simulator {
+        let mut sim = Simulator {
             hlt_game,
             memory,
             future_turns: vec![TurnState::new_current(hlt_game)],
             current_turn_index: 0,
-        }
+        };
+        sim.next();
+        sim
     }
 
     /// The action has an effect in the next turn.
@@ -115,7 +117,7 @@ impl<'turn > Simulator<'turn > {
         if let Some(turn) = self.future_turns.get(self.current_turn_index +1) {
             // No ship there?
             let erg = turn.ship_at(dest).is_none();
-            log(&format!("Ship? {}", !erg));
+            log(&format!("Ship at {:?} on turn {}? {}", dest, self.current_turn_index, !erg));
             erg
         } else {
             // next() doesn't exist and moves

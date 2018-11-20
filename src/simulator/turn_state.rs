@@ -112,6 +112,7 @@ impl TurnState {
             
             // If found, jump out of loop.
             if pos == position {
+                log(&format!("Turn: Found ship {} in {:?}", id.0, pos));
                 return Some(id.clone());
             }
         }

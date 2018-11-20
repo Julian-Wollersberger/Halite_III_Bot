@@ -72,17 +72,24 @@ impl PathFinder {
         for dir in simulator.useful_directions(&ship.position, dest) {
             if simulator.is_safe(ship.position.directional_offset(dir)) {
                 safe.push(dir);
-            } else {
-                log(&format!("Unsafe: {:?}", dir));
             }
         }
         // Random entry or still.
         if safe.len() >= 2 {
             safe[rand::thread_rng().gen_range(0, safe.len())]
         } else if safe.len() >= 1 {
+            log(&format!("PF: One safe direction: {:?}", safe[0]));
             safe[0]
         } else {
-            Direction::Still
+            log(&format!("PF: Every path blocked. Dest {:?}, Ship {:?}", dest, ship.position));
+            // Evade: Chose a random direction and try to move there.
+            let dir = Direction::get_all_cardinals()[rand::thread_rng().gen_range(0, 4)];
+            if simulator.is_safe(ship.position.directional_offset(dir)) {
+                log(&format!("PF: Evade {:?}", dir));
+                dir
+            } else {
+                Direction::Still
+            }
         }
     }
 }
