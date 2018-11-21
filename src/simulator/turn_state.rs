@@ -43,8 +43,11 @@ impl TurnState {
         //log(&format!("Next turn action {{:?}}, overwrite_ships {}, overwrite_cells {}",
         //    self.overwrite_ships.len(), self.overwrite_cells.len()));
         match action {
-            Action::MoveShip(id, direction) =>
-                self.move_ship(id, direction),
+            Action::MoveShip(id, direction) => {
+                log(&format!("Turn: did action Move({}, {:?})",
+                    id.0, direction));
+                self.move_ship(id, direction)
+            },
             Action::None => {}
         }
     }
@@ -75,7 +78,9 @@ impl TurnState {
             self.overwrite_cells.insert(ship.position, before - collect);
         }
         
-        self.overwrite_ships.insert(id, ship);
+        self.overwrite_ships.insert(id, ship.clone());
+        assert_eq!(ship.position, self.ship(id).position);
+        assert_eq!(ship.position, self.overwrite_ships.get(&id).unwrap().position);
     }
 
     /// # Helpers and Getters
@@ -102,6 +107,9 @@ impl TurnState {
     pub fn ship_at(&self, pos: Position) -> Option<ShipId> {
         // Iterate through all ships and find the one with the given position.
         // Asserts that all overwrite_ships are in ships.
+        log(&format!("Turn: Ships {}, overwr {}. All ship: -----",
+            self.ships.len(), self.overwrite_ships.len()));
+        
         for (id, ship) in &self.ships {
             let position =
                 if let Some(overwrite) = self.overwrite_ships.get(id) {
@@ -109,6 +117,7 @@ impl TurnState {
                 } else {
                     ship.position
                 };
+            log(&format!("Turn: {} is at {:?} but originally {:?}", id.0, position, ship.position));
             
             // If found, jump out of loop.
             if pos == position {
@@ -158,8 +167,9 @@ impl TurnState {
 
     /// Let this turn know of previous' overwrites.
     pub fn clone_overwrites_from(&mut self, previous: &TurnState) {
-        self.overwrite_cells = previous.overwrite_cells.clone();
-        self.overwrite_ships = previous.overwrite_ships.clone();
+        log(&format!("turn: prevoius ow ships len {}", previous.overwrite_ships.len()));
+        self.overwrite_cells.extend(previous.overwrite_cells.clone());
+        //self.overwrite_ships.extend(previous.overwrite_ships.clone());
     }
 
     /// Clear overwrites.

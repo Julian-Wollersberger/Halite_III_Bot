@@ -2,8 +2,9 @@ use hlt::game::Game;
 use simulator::memory::Memory;
 use simulator::simulator::Simulator;
 use bot::simulating_bot::SimulatingBot;
+use std::time::SystemTime;
 
-pub fn run(mut hlt_game: Game) {
+pub fn run(mut hlt_game: Game, start_time: SystemTime) {
     first_turn(&mut hlt_game);
 
     let mut memory = Memory::new();
@@ -34,6 +35,11 @@ pub fn run(mut hlt_game: Game) {
             "Real: ship: {}, map: {}, pos: {} {}", ship.halite,
             hlt_game.game_map.at_position(&ship.position).halite,
             ship.position.x, ship.position.y)); */
+        
+        if hlt_game.turn_number >= hlt_game.constants.max_turns {
+            let end_time = SystemTime::now();
+            hlt_game.log.borrow_mut().log(&format!("Game took {:?}", end_time.duration_since(start_time)));
+        }
         
         Game::end_turn(&commands);
     }

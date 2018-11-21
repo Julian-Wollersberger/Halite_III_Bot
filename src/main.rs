@@ -21,14 +21,15 @@ fn main() {
     } else {
         SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
     };
-
+    let start_time = SystemTime::now();
+    
     let game = Game::new();
     // At this point "game" variable is populated with initial map data.
     // This is a good place to do computationally expensive start-up pre-processing.
     // As soon as you call "ready" function below, the 2 second per turn timer will start.
     Game::ready("Julius-Beides");
 
-    set_logger(game.log.clone());
+    //set_logger(game.log.clone());
     log("Successfully initialised global logger!");
     log(&format!("Successfully created bot! \
         My Player ID is {}.", game.my_id.0));
@@ -36,7 +37,7 @@ fn main() {
     //fixed_pattern_bot::run(game);
     //move_random_and_back::run(game);
     //overseer::run(game);
-    simulate_future::run(game);
+    simulate_future::run(game, start_time);
 }
 
 /*
