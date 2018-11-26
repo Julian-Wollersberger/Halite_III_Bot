@@ -14,6 +14,7 @@ use bot::path_finder::PathFinder;
 use hlt::ship::Ship;
 use rand::Rng;
 use simulator::logger::log;
+use simulator::Halite;
 
 pub struct SimulatingBot<'turn > {
     simulator: &'turn mut Simulator<'turn>,
@@ -66,7 +67,7 @@ impl<'turn> SimulatingBot<'turn> {
         // Find the best out of some random ones.
         for i in 0..1 {
             let go_back_cargo = rand::thread_rng().gen_range(200, 800);
-            let cell_empty = biased_range(10, 100);
+            let cell_empty = biased_range(10, 100) as Halite;
             let path = self.some_complete_path(go_back_cargo, cell_empty);
             
             // Simulator & ship changed state.
@@ -94,7 +95,7 @@ impl<'turn> SimulatingBot<'turn> {
 
     /// Move random until the ship is almost filled up.
     /// Then go to a dropoff.
-    fn some_complete_path(&mut self, go_back_cargo: usize, cell_empty: u16) -> Vec<Direction> {
+    fn some_complete_path(&mut self, go_back_cargo: usize, cell_empty: Halite) -> Vec<Direction> {
         const MAX_PATH_LEN: usize = 200;
         let finder = PathFinder::new();
         let mut path = Vec::new();
@@ -141,7 +142,7 @@ impl<'turn> SimulatingBot<'turn> {
 
     /// Returns true if the ship should move,
     /// or false if it should collect.
-    fn move_or_collect(&self, cell_empty: u16) -> bool {
+    fn move_or_collect(&self, cell_empty: Halite) -> bool {
         // If a cell contains less than this, it is considered empty.
         let ship = self.ship();
         let sim = &self.simulator;

@@ -6,6 +6,7 @@ use hlt::map_cell::Structure;
 use hlt::position::Position;
 use hlt::ship::Ship;
 use std::cmp::min;
+use simulator::Halite;
 
 pub struct GameMap {
     pub width: usize,
@@ -18,17 +19,17 @@ impl GameMap {
     /// Added by me.
     /// I'm just interested in the amount of halite.
     // TODO test if u16 or u32 is faster.
-    pub fn get_halite_map(&self) -> Vec<Vec<u16>> {
+    pub fn get_halite_map(&self) -> Vec<Vec<Halite>> {
         assert_eq!(self.height, self.cells.len());
         assert_eq!(self.width, self.cells[0].len());
         // Asert max_halite < u16.MAX_VALUE
 
-        let mut halite_map: Vec<Vec<u16>> = Vec::with_capacity(self.height);
+        let mut halite_map: Vec<Vec<Halite>> = Vec::with_capacity(self.height);
         for cell_row in &self.cells {
 
-            let mut halite_row: Vec<u16> = Vec::with_capacity(self.width);
+            let mut halite_row: Vec<Halite> = Vec::with_capacity(self.width);
             for cell in cell_row {
-                let halite = cell.halite as u16;
+                let halite = cell.halite as Halite;
                 halite_row.push(halite);
             }
 

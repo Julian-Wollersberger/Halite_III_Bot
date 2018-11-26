@@ -7,6 +7,7 @@ use hlt::ship::Ship;
 use hlt::position::Position;
 use hlt::direction::Direction;
 use simulator::logger::log;
+use simulator::Halite;
 
 /// Be able to calculate the outcome of actions a few turns ahead.
 /// I'm trying to not copy the gamefield data more than once per turn.
@@ -22,11 +23,11 @@ pub struct Simulator<'turn > {
 }
 
 impl<'turn > Simulator<'turn > {
-    pub fn new(hlt_game: &'turn Game, memory: &'turn Memory) -> Simulator<'turn > {
+    pub fn new(hlt_game: &'turn Game, memory: &'turn mut Memory) -> Simulator<'turn > {
         let mut sim = Simulator {
             hlt_game,
             memory,
-            future_turns: vec![TurnState::new_current(hlt_game)],
+            future_turns: vec![TurnState::new_current(hlt_game, memory)],
             current_turn_index: 0,
         };
         sim.next();
@@ -74,7 +75,7 @@ impl<'turn > Simulator<'turn > {
     pub fn apply(&mut self) {
         //TODO Write to memory
         for turn in self.future_turns.iter_mut() {
-            turn.apply(&self.memory);
+            turn.apply();
         }
         self.current_turn_index = 0;
     }
@@ -89,7 +90,7 @@ impl<'turn > Simulator<'turn > {
     fn next(&mut self) -> &mut TurnState {
         // init next if non-existent
         if self.future_turns.get(self.current_turn_index +1).is_none() {
-            let next = TurnState::new_next(self.current(), self.memory);
+            let next = TurnState::new_next(self.current(), &self.memory);
             self.future_turns.push(next)
         }
         &mut self.future_turns[self.current_turn_index +1]
@@ -98,11 +99,11 @@ impl<'turn > Simulator<'turn > {
     pub fn id_to_ship(&self, id: ShipId) -> &Ship {
         self.current().ship(id)
     }
-    pub fn halite_at(&self, pos: &Position) -> u16 {
+    pub fn halite_at(&self, pos: &Position) -> Halite {
         self.current().halite_at(pos)
     }
     pub fn dropoff_near(&self, id: ShipId) -> Position {
-        self.current().dropoff_near(id)
+        self.hlt_game.me().shipyard.position
     }
     
     #[inline]
@@ -125,4 +126,19 @@ impl<'turn > Simulator<'turn > {
             panic!("simulator.next() not initialised yet :(");
         }
     }
+}
+
+/// Get a list of positions where ships can deposit their cargo.
+fn my_shipyard_and_dropoff_positions(hlt_game: &Game) -> Vec<Position> {
+    let me = &hlt_game.players[hlt_game.my_id.0];
+    let dropoff_ids = &me.dropoff_ids;
+    let mut shipyard_dropoffs = Vec::with_capacity(dropoff_ids.len() +1);
+    
+    for id in dropoff_ids {
+        if let Some(dropoff) = hlt_game.dropoffs.get(id) {
+            shipyard_dropoffs.push(dropoff.position);
+        }
+    }
+    shipyard_dropoffs.push(me.shipyard.position);
+    return shipyard_dropoffs
 }
