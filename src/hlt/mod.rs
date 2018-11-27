@@ -28,11 +28,11 @@ pub mod shipyard;
 #[allow(dead_code)]
 mod input;
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub struct PlayerId(pub usize);
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub struct DropoffId(pub usize);
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub struct ShipId(pub usize);

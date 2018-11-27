@@ -14,11 +14,8 @@ use simulator::Halite;
 pub struct Simulator<'turn > {
     hlt_game: &'turn Game,
     pub memory: &'turn Memory,
-
-    /// TODO Or use LinkedList? (because Vec::push might
-    /// have to reallocate a lot of memory)
+    
     future_turns: Vec<TurnState>,
-
     current_turn_index: usize,
 }
 

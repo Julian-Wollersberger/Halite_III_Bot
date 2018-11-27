@@ -3,6 +3,7 @@ use hlt::entity::Entity;
 use hlt::PlayerId;
 use hlt::position::Position;
 
+#[derive(Serialize, Deserialize)]
 pub struct Shipyard {
     pub owner: PlayerId,
     pub position: Position,

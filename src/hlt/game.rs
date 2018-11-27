@@ -15,7 +15,9 @@ use std::collections::HashMap;
 use std::ops::DerefMut;
 use std::rc::Rc;
 
+#[derive(Serialize, Deserialize)]
 pub struct Game {
+    #[serde(skip_serializing, skip_deserializing)]
     pub log: Rc<RefCell<Log>>,
     pub constants: Constants,
     pub turn_number: usize,
@@ -24,6 +26,7 @@ pub struct Game {
     pub ships: HashMap<ShipId, Ship>,
     pub dropoffs: HashMap<DropoffId, Dropoff>,
     pub game_map: GameMap,
+    #[serde(skip_serializing, skip_deserializing)]
     input: Input,
 }
 

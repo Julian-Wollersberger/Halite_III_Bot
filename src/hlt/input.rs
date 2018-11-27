@@ -11,6 +11,17 @@ pub struct Input {
     current_token: usize,
 }
 
+/// Required for skipping serialization
+impl Default for Input {
+    fn default() -> Self {
+        Input{
+            log: Rc::new(RefCell::new(Log::new())),
+            tokens: Vec::new(),
+            current_token: 0
+        }
+    }
+}
+
 impl Input {
     pub fn new(log: &Rc<RefCell<Log>>) -> Input {
         Input { log: log.clone(), tokens: Vec::new(), current_token: 0 }

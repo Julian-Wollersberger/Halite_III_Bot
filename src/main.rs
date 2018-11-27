@@ -1,6 +1,9 @@
 extern crate core;
 extern crate rand;
 
+#[macro_use]
+extern crate serde_derive;
+
 use std::env;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
@@ -29,7 +32,7 @@ fn main() {
     // As soon as you call "ready" function below, the 2 second per turn timer will start.
     Game::ready("Julius-Beides");
 
-    //set_logger(game.log.clone());
+    set_logger(game.log.clone());
     log("Successfully initialised global logger!");
     log(&format!("Successfully created bot! \
         My Player ID is {}.", game.my_id.0));

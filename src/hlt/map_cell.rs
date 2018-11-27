@@ -3,6 +3,7 @@ use hlt::position::Position;
 use hlt::ShipId;
 use hlt::PlayerId;
 
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
 pub struct MapCell {
     pub position: Position,
     pub halite: usize,
@@ -28,7 +29,7 @@ impl MapCell {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Serialize, Deserialize, Debug)]
 pub enum Structure {
     None,
     Dropoff(DropoffId),

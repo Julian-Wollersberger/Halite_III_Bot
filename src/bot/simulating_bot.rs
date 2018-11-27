@@ -72,12 +72,12 @@ impl<'turn> SimulatingBot<'turn> {
             
             // Simulator & ship changed state.
             let score = 10 * self.ship().halite / path.len();
-            /*if score > 0 { log(&format!(
+            if score > 0 { log(&format!(
                 "Path {}, len {}, go_back {}, cell_empty {} \
                 would collect {} and score\t{}",
                     i, path.len(), go_back_cargo, cell_empty,
                     self.ship().halite, score));
-            }*/
+            }
             
             if  score > best_score {
                 best_score = score;

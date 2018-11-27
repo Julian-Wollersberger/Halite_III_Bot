@@ -4,6 +4,7 @@ use hlt::input::Input;
 use hlt::PlayerId;
 use hlt::position::Position;
 
+#[derive(Serialize, Deserialize)]
 pub struct Dropoff {
     pub owner: PlayerId,
     pub id: DropoffId,

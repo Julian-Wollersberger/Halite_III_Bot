@@ -8,6 +8,7 @@ use hlt::ship::Ship;
 use std::cmp::min;
 use simulator::Halite;
 
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
 pub struct GameMap {
     pub width: usize,
     pub height: usize,

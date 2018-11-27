@@ -1,11 +1,19 @@
+extern crate bincode;
+
+use self::bincode::{serialize, deserialize};
+
 use hlt::game::Game;
 use simulator::memory::Memory;
 use simulator::simulator::Simulator;
 use bot::simulating_bot::SimulatingBot;
 use std::time::SystemTime;
+use std::fs::File;
 
 pub fn run(mut hlt_game: Game, start_time: SystemTime) {
     first_turn(&mut hlt_game);
+    
+    serialize_game(&hlt_game);
+    assert_eq!(&hlt_game.game_map, &deserialize_game().game_map);
 
     let mut memory = Memory::new();
 
@@ -51,4 +59,17 @@ fn first_turn(game: &mut Game) {
     let mut commands = Vec::new();
     commands.push(game.players[game.my_id.0].shipyard.spawn());
     Game::end_turn(&commands);
+}
+
+/// For testing.
+fn serialize_game(hlt_game: &Game) {
+    // Encode to something implementing Write
+    let mut file = File::create("./game.serialized").unwrap();
+    bincode::serialize_into(&mut file, &hlt_game).unwrap();
+}
+
+/// For testing.
+fn deserialize_game() -> Game {
+    let file = File::open("./game.serialized").unwrap();
+    bincode::deserialize_from(file).unwrap()
 }

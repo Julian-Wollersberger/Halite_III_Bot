@@ -9,6 +9,13 @@ pub struct Log {
     file: Option<File>,
 }
 
+/// Required for skipping serialization
+impl Default for Log {
+    fn default() -> Self {
+        Log::new()
+    }
+}
+
 impl Log {
     pub fn new() -> Log {
         Log { log_buffer: Some(Vec::new()), file: None }
