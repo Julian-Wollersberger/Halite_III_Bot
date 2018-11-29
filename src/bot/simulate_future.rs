@@ -1,20 +1,23 @@
-extern crate bincode;
-
-use self::bincode::{serialize, deserialize};
-
 use hlt::game::Game;
 use simulator::memory::Memory;
 use simulator::simulator::Simulator;
 use bot::simulating_bot::SimulatingBot;
 use std::time::SystemTime;
 use std::fs::File;
+use bot::collision_avoidance::CollisionAvoidance;
 
 pub fn run(mut hlt_game: Game, start_time: SystemTime) {
     first_turn(&mut hlt_game);
+    hlt_game.update_frame();
+    Game::end_turn(&Vec::new());
     
     serialize_game(&hlt_game);
     assert_eq!(&hlt_game.game_map, &deserialize_game().game_map);
-
+    
+    run_loop(hlt_game, start_time, false);
+}
+ 
+pub fn run_loop(mut hlt_game: Game, start_time: SystemTime, debug: bool) {
     let mut memory = Memory::new();
 
     loop {
@@ -22,8 +25,11 @@ pub fn run(mut hlt_game: Game, start_time: SystemTime) {
             first_turn(&mut hlt_game);
         }
         
-        hlt_game.update_frame();
+        if !debug {
+            hlt_game.update_frame();
+        }
         let mut commands = Vec::new();
+        let mut avoider = CollisionAvoidance::new(&hlt_game.game_map);
 
         let mut simulator = Simulator::new(&hlt_game, &mut memory);
         let my_ships = &hlt_game.me().ship_ids;
@@ -34,10 +40,12 @@ pub fn run(mut hlt_game: Game, start_time: SystemTime) {
             unsafe {
                 let sim: *mut Simulator = &mut simulator;
                 let mut bot: SimulatingBot = SimulatingBot::new(
-                    ship_id.clone(), &mut *sim);
-                commands.push(bot.calculate_command());
+                    ship_id.clone(), &mut *sim, &avoider);
+                commands.push(bot.pop_command());
             }
         }
+        simulator.safe();
+        
         /*let ship = hlt_game.id_to_ship(ship_id);
         log(&format!(
             "Real: ship: {}, map: {}, pos: {} {}", ship.halite,
@@ -49,9 +57,11 @@ pub fn run(mut hlt_game: Game, start_time: SystemTime) {
             hlt_game.log.borrow_mut().log(&format!("Game took {:?}", end_time.duration_since(start_time)));
         }
         
+        let len = commands.len();
         Game::end_turn(&commands);
     }
 }
+
 
 /// spawn ship
 fn first_turn(game: &mut Game) {
@@ -69,7 +79,7 @@ fn serialize_game(hlt_game: &Game) {
 }
 
 /// For testing.
-fn deserialize_game() -> Game {
+pub fn deserialize_game() -> Game {
     let file = File::open("./game.serialized").unwrap();
     bincode::deserialize_from(file).unwrap()
 }

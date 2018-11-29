@@ -26,6 +26,9 @@ impl Memory {
             .or_else(|| Some(StateDifference::new()))
             .unwrap()
     }
+    pub fn safe_diff(&self, turn_number: u32, diff: StateDifference) {
+        self.diffs.borrow_mut().insert(turn_number, diff);
+    }
     
     pub fn store_path(&self, id: ShipId, dir: Vec<Direction>) {
         self.ship_path.borrow_mut().insert(id, dir);

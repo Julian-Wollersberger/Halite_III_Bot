@@ -8,6 +8,7 @@ use hlt::position::Position;
 use hlt::direction::Direction;
 use simulator::logger::log;
 use simulator::Halite;
+use rand::Rng;
 
 /// Be able to calculate the outcome of actions a few turns ahead.
 /// I'm trying to not copy the gamefield data more than once per turn.
@@ -70,11 +71,16 @@ impl<'turn > Simulator<'turn > {
     /// If a bot has decided on its actions, it must apply them.
     /// Then bots processed later know of the actions and their effects on the map.
     pub fn apply(&mut self) {
-        //TODO Write to memory
         for turn in self.future_turns.iter_mut() {
             turn.apply();
         }
         self.current_turn_index = 0;
+    }
+    
+    pub fn safe(&self) {
+        for turn in self.future_turns.iter() {
+            turn.save(self.memory);
+        }
     }
 
     /// Get current turn
@@ -110,32 +116,22 @@ impl<'turn > Simulator<'turn > {
     }
     
     /// Will a ship be there in the next turn?
-    pub fn is_safe(&self, dest: Position) -> bool {
+    pub fn is_safe(&self, dest: Position) -> bool { //fixme
         // Immutable next()
         if let Some(turn) = self.future_turns.get(self.current_turn_index +1) {
             // No ship there?
             let erg = turn.ship_at(dest).is_none();
-            log(&format!("Ship at {:?} on turn {}? {}", dest, self.current_turn_index, !erg));
-            erg
+            //log(&format!("Ship at {:?} on turn {}? {}", dest, self.current_turn_index, !erg));
+            
+            if rand::thread_rng().gen_bool(0.5) {
+                erg
+            } else { // Workaround: Ignore safety sometimes anyway.
+                true
+            }
         } else {
             // next() doesn't exist and moves
             // are not restored from memory.
             panic!("simulator.next() not initialised yet :(");
         }
     }
-}
-
-/// Get a list of positions where ships can deposit their cargo.
-fn my_shipyard_and_dropoff_positions(hlt_game: &Game) -> Vec<Position> {
-    let me = &hlt_game.players[hlt_game.my_id.0];
-    let dropoff_ids = &me.dropoff_ids;
-    let mut shipyard_dropoffs = Vec::with_capacity(dropoff_ids.len() +1);
-    
-    for id in dropoff_ids {
-        if let Some(dropoff) = hlt_game.dropoffs.get(id) {
-            shipyard_dropoffs.push(dropoff.position);
-        }
-    }
-    shipyard_dropoffs.push(me.shipyard.position);
-    return shipyard_dropoffs
 }

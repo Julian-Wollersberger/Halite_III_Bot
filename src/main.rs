@@ -1,29 +1,26 @@
 extern crate core;
 extern crate rand;
-
 #[macro_use]
 extern crate serde_derive;
 
-use std::env;
 use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
-
 use hlt::game::Game;
 use bot::simulate_future;
 use simulator::logger::log;
 use simulator::logger::set_logger;
+use bot::simulate_future::deserialize_game;
+use bot::simulate_future::run_loop;
 
 mod hlt;
 mod simulator;
 mod bot;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let rng_seed: u64 = if args.len() > 1 {
-        args[1].parse().unwrap()
-    } else {
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
-    };
+    start_game();
+    //deserialize_game_and_start();
+}
+
+fn start_game() {
     let start_time = SystemTime::now();
     
     let game = Game::new();
@@ -41,6 +38,12 @@ fn main() {
     //move_random_and_back::run(game);
     //overseer::run(game);
     simulate_future::run(game, start_time);
+}
+
+/// Load a previously saved game state
+/// to be able to use the debugger.
+fn deserialize_game_and_start() {
+    run_loop(deserialize_game(), SystemTime::now(), true);
 }
 
 /*

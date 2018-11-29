@@ -5,5 +5,5 @@ use hlt::direction::Direction;
 pub enum Action {
     MoveShip(ShipId, Direction),
     //CreateDropoff,
-    None,
+    //None,
 }

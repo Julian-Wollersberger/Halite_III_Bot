@@ -1,11 +1,7 @@
 extern crate rand;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use hlt::command::Command;
 use hlt::direction::Direction;
-use hlt::log::Log;
 use hlt::ShipId;
 use simulator::memory::Memory;
 use simulator::simulator::Simulator;
@@ -15,10 +11,12 @@ use hlt::ship::Ship;
 use rand::Rng;
 use simulator::logger::log;
 use simulator::Halite;
+use bot::collision_avoidance::CollisionAvoidance;
 
 pub struct SimulatingBot<'turn > {
     simulator: &'turn mut Simulator<'turn>,
     memory: &'turn Memory,
+    collision_avoider: &'turn CollisionAvoidance<'turn>,
 
     id: ShipId,
 }
@@ -31,27 +29,46 @@ impl<'turn> SimulatingBot<'turn> {
     pub fn new<'t>(
         id: ShipId,
         simulator: &'t mut Simulator<'t>,
+        collision_avoider: &'t CollisionAvoidance<'t>,
     ) -> SimulatingBot<'t> {
         SimulatingBot {
             simulator,
             memory: simulator.memory,
+            collision_avoider,
             id,
         }
     }
 
-    pub fn calculate_command(&mut self) -> Command {
+    pub fn pop_command(&mut self) -> Command {
         let dir: Direction;
-
+        
+        // Calculate if needed.
         let mut path = self.memory.ship_path(&self.id);
         if path.len() <= 0 {
             path = self.calc_good_path();
             log(&format!("Path length: {}", path.len()))
         }
         // One movement per turn.
-        dir = path.pop().unwrap();
-        self.memory.store_path(self.id, path);
-
-        self.simulator.id_to_ship(self.id).move_ship(dir)
+        let dir = match path.pop() {
+            Some(d) => d,
+            None => Direction::Still,
+        };
+        
+        // Additional safety check.
+        // Workaround for the buggy simulator.
+        let ship = self.simulator.id_to_ship(self.id);
+        if self.collision_avoider.can_move_safely_then_reserve(
+            &ship.position.directional_offset(dir))
+        {
+            // Move as intended
+            self.memory.store_path(self.id, path);
+            ship.move_ship(dir)
+        } else {
+            // Path is removed from memory and will be recalculated next turn.
+            self.memory.store_path(self.id, Vec::new());
+            log("Failed to reserve");
+            ship.move_ship(Direction::Still)
+        }
     }
 
     /// Outline:
@@ -65,19 +82,23 @@ impl<'turn> SimulatingBot<'turn> {
         self.simulator.rollback();
         
         // Find the best out of some random ones.
-        for i in 0..1 {
+        for i in 0..10 {
             let go_back_cargo = rand::thread_rng().gen_range(200, 800);
             let cell_empty = biased_range(10, 100) as Halite;
             let path = self.some_complete_path(go_back_cargo, cell_empty);
             
             // Simulator & ship changed state.
-            let score = 10 * self.ship().halite / path.len();
-            if score > 0 { log(&format!(
+            let score = if path.len() == 0 {
+                    0
+                } else {
+                    10 * self.ship().halite / path.len()
+                };
+            /*if score >= 0 { log(&format!(
                 "Path {}, len {}, go_back {}, cell_empty {} \
                 would collect {} and score\t{}",
-                    i, path.len(), go_back_cargo, cell_empty,
-                    self.ship().halite, score));
-            }
+                i, path.len(), go_back_cargo, cell_empty,
+                self.ship().halite, score));
+            }*/
             
             if  score > best_score {
                 best_score = score;

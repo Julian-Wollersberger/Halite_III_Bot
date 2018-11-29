@@ -40,11 +40,11 @@ impl TurnState {
         //    self.overwrite_ships.len(), self.overwrite_cells.len()));
         match action {
             Action::MoveShip(id, direction) => {
-                log(&format!("Turn: did action Move({}, {:?})",
-                    id.0, direction));
+                //log(&format!("Turn: did action Move({}, {:?})",
+                //    id.0, direction));
                 self.move_ship(id, direction)
             },
-            Action::None => {}
+            //Action::None => {}
         }
     }
     
@@ -171,8 +171,8 @@ impl TurnState {
             &mut self.undoable_diff, StateDifference::new());
         self.applied_diff.extend(overwrites);
     }
-    pub fn save(&self, memory: &mut Memory) {
-        unimplemented!()
+    pub fn save(&self, memory: & Memory) {
+        memory.safe_diff(self.turn_number, self.applied_diff.clone())
     }
 }
 

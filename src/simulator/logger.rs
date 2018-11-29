@@ -1,7 +1,6 @@
 use hlt::log::Log;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::mem;
 
 /// A global reference to the game's LOGGER.
 pub fn log(m: &str) {
