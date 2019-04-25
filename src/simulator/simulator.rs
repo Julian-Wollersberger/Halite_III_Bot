@@ -81,6 +81,7 @@ impl<'turn > Simulator<'turn > {
         for turn in self.future_turns.iter() {
             turn.save(self.memory);
         }
+        
     }
 
     /// Get current turn
@@ -132,6 +133,14 @@ impl<'turn > Simulator<'turn > {
             // next() doesn't exist and moves
             // are not restored from memory.
             panic!("simulator.next() not initialised yet :(");
+        }
+    }
+}
+
+impl<'turn> Drop for Simulator<'turn> {
+    fn drop(&mut self) {
+        for turn in self.future_turns.drain(..) {
+            turn.dont_drop();
         }
     }
 }

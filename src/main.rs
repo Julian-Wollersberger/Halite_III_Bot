@@ -2,6 +2,8 @@ extern crate core;
 extern crate rand;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate lazy_static;
 
 use std::time::SystemTime;
 use hlt::game::Game;
@@ -10,6 +12,7 @@ use simulator::logger::log;
 use simulator::logger::set_logger;
 use bot::simulate_future::deserialize_game;
 use bot::simulate_future::run_loop;
+use std::thread;
 
 mod hlt;
 mod simulator;

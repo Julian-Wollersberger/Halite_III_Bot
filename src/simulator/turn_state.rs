@@ -157,7 +157,10 @@ impl TurnState {
     
     pub fn clone_overwrites_from(&mut self, previous: &TurnState) {
         self.undoable_diff.clear();
-        self.undoable_diff.extend(previous.undoable_diff.clone())
+        // Costs 6 seconds!
+        self.undoable_diff.extend(&mut previous.undoable_diff.clone())
+        
+        //self.undoable_diff.clone_from(&previous.undoable_diff)
     }
     
     /// Clear overwrites.
@@ -167,12 +170,17 @@ impl TurnState {
     /// Apply decided actions (overwrites), so other bots know
     /// of them.
     pub fn apply(&mut self) {
-        let overwrites = mem::replace(
-            &mut self.undoable_diff, StateDifference::new());
-        self.applied_diff.extend(overwrites);
+        self.applied_diff.extend(&mut self.undoable_diff);
     }
     pub fn save(&self, memory: & Memory) {
         memory.safe_diff(self.turn_number, self.applied_diff.clone())
+    }
+    
+    /// Put the diffs in a buffer.
+    pub fn dont_drop(mut self) {
+        self.saved_diff.dont_drop();
+        self.applied_diff.dont_drop();
+        self.undoable_diff.dont_drop();
     }
 }
 

@@ -3,6 +3,8 @@ use hlt::ShipId;
 use hlt::ship::Ship;
 use hlt::position::Position;
 use simulator::Halite;
+use simulator::logger::log;
+use std::sync::Mutex;
 
 /// A diff to the game state.
 /// Only the halite in a few cells is collected.
@@ -16,15 +18,29 @@ pub struct StateDifference {
     halite: HashMap<Position, Halite>,
 }
 
+lazy_static! {
+    /// Prevent lots of allocations by buffering the HashMaps.
+    static ref BUFFER: Mutex<Vec<StateDifference>> = Mutex::new(Vec::new());
+}
+
 impl StateDifference {
     
     pub fn new() -> StateDifference {
-        // TODO Cache the HashMaps.
-        StateDifference {
-            ships: HashMap::new(),
-            ship_pos: HashMap::new(),
-            halite: HashMap::new(),
+        // Only create new if buffer is empty.
+        match BUFFER.lock().unwrap().pop() {
+            // Assume that it is already cleared.
+            Some(diff) => diff,
+            None => StateDifference {
+                ships: HashMap::new(),
+                ship_pos: HashMap::new(),
+                halite: HashMap::new(),
+            }
         }
+    }
+    /// Put it into the buffer
+    pub fn dont_drop(mut self) {
+        self.clear();
+        BUFFER.lock().unwrap().push(self);
     }
     
     pub fn ship(&self, id: ShipId) -> Option<&Ship> {
@@ -57,10 +73,10 @@ impl StateDifference {
         self.halite.clear();
     }
     /// Overwrite existing entries.
-    pub fn extend(&mut self, with: StateDifference) {
-        self.ships.extend(with.ships);
-        self.ship_pos.extend(with.ship_pos);
-        self.halite.extend(with.halite);
+    pub fn extend(&mut self, with: &mut StateDifference) {
+        self.ships.extend(with.ships.drain());
+        self.ship_pos.extend(with.ship_pos.drain());
+        self.halite.extend(with.halite.drain());
     }
 }
 
